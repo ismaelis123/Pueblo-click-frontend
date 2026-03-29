@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiMapPin, FiHome, FiCheck, FiPhone, FiUser } from 'react-icons/fi';
+import { FiMapPin, FiCheck, FiPhone, FiUser } from 'react-icons/fi';
 import api from '../../services/api';
 import { formatDate, formatCurrency } from '../../utils/formatters';
 import LoadingSpinner from '../Common/LoadingSpinner';
@@ -19,35 +19,45 @@ const PendingOrders = () => {
       const response = await api.get('/mandadito/orders/pending');
       setOrders(response.data);
     } catch (error) {
-      toast.error('Error al cargar órdenes');
+      toast.error('Error al cargar órdenes pendientes');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAcceptOrder = async (orderId) => {
-    setAcceptingId(orderId);
+  const handleAcceptOrder = async (order) => {
+    setAcceptingId(order._id);
     try {
-      const response = await api.put(`/mandadito/orders/${orderId}/accept`);
-      toast.success(response.data.message || 'Orden aceptada');
-      fetchPendingOrders();
+      let response;
+
+      // 🔑 LÓGICA CORREGIDA: elegir el endpoint correcto
+      if (order.status === 'pending_confirmation') {
+        // Orden asignada directamente por cliente
+        response = await api.put(`/mandadito/orders/${order._id}/accept-direct`);
+      } else {
+        // Orden pública (pending)
+        response = await api.put(`/mandadito/orders/${order._id}/accept`);
+      }
+
+      toast.success(response.data.message || '✅ Mandado aceptado correctamente');
+      fetchPendingOrders(); // recargar lista
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Error al aceptar la orden');
+      toast.error(error.response?.data?.message || 'Error al aceptar el mandado');
     } finally {
       setAcceptingId(null);
     }
   };
 
   const handleCallClient = (phone) => {
-    window.location.href = `tel:${phone}`;
+    if (phone) window.location.href = `tel:${phone}`;
   };
 
   if (loading) return <LoadingSpinner />;
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 pb-20 md:pb-8">
-      <h1 className="text-2xl font-bold text-text mb-6">Órdenes Pendientes</h1>
-      
+      <h1 className="text-2xl font-bold text-text mb-6">📦 Órdenes Pendientes</h1>
+
       {orders.length === 0 ? (
         <div className="card text-center py-12">
           <FiMapPin className="text-6xl text-gray-300 mx-auto mb-4" />
@@ -61,7 +71,11 @@ const PendingOrders = () => {
                 <div className="flex items-center gap-2">
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
                     {order.client?.profilePhoto ? (
-                      <img src={order.client.profilePhoto} alt="" className="w-full h-full object-cover" />
+                      <img
+                        src={order.client.profilePhoto}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <FiUser className="text-primary" />
                     )}
@@ -70,33 +84,37 @@ const PendingOrders = () => {
                     <p className="font-semibold text-text">{order.client?.name}</p>
                     <button
                       onClick={() => handleCallClient(order.client?.phone)}
-                      className="flex items-center gap-1 text-xs text-secondary hover:text-secondary/80 transition-colors"
+                      className="flex items-center gap-1 text-xs text-secondary hover:text-secondary/80"
                     >
                       <FiPhone className="text-xs" />
                       <span>{order.client?.phone}</span>
                     </button>
                   </div>
                 </div>
-                <span className="badge badge-pending">Pendiente</span>
+
+                <span className={`badge ${order.status === 'pending_confirmation' ? 'badge-accepted' : 'badge-pending'}`}>
+                  {order.status === 'pending_confirmation' ? 'Asignado directo' : 'Pendiente'}
+                </span>
               </div>
-              
+
               <p className="text-gray-700 mb-3">{order.description}</p>
-              
+
               <div className="space-y-1 text-sm text-gray-500 mb-4">
                 <p>📍 Recoger en: {order.pickupAddress}</p>
                 <p>🏠 Entregar en: {order.deliveryAddress}</p>
+                <p className="text-xs text-gray-400">{formatDate(order.createdAt)}</p>
               </div>
-              
+
               <div className="flex justify-between items-center pt-3 border-t border-gray-100">
                 <div>
                   <span className="font-semibold text-primary">Ganancia: {formatCurrency(order.amount)}</span>
                   <p className="text-xs text-gray-400">*Se descuenta al aceptar</p>
                 </div>
-                
+
                 <button
-                  onClick={() => handleAcceptOrder(order._id)}
+                  onClick={() => handleAcceptOrder(order)}
                   disabled={acceptingId === order._id}
-                  className="btn-primary text-sm py-2 px-4 flex items-center gap-1"
+                  className="btn-primary text-sm py-2 px-6 flex items-center gap-2"
                 >
                   {acceptingId === order._id ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

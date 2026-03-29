@@ -149,7 +149,7 @@ function App() {
             </ProtectedRoute>
           } />
 
-          {/* 404 - Redirige a la página principal */}
+          {/* 404 */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
