@@ -7,20 +7,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#FF6B35',
-        secondary: '#2EC4B6',
-        accent: '#E71D36',
-        background: '#FDFFFC',
-        text: '#011627',
-        grayLight: '#F7F9FC',
+        primary: '#E6392E',
+        secondary: '#334155',
+        accent: '#DC2626',
+        dark: '#1F2937',
+        light: '#FAF7F0',
       },
-      fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-      },
-      boxShadow: {
-        'soft': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-        'medium': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-      }
     },
   },
   plugins: [],

@@ -14,40 +14,46 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    
     const result = await login(phone, password);
     setLoading(false);
     
     if (result.success) {
-      if (result.user.role === 'client') {
-        navigate('/client/orders');
-      } else if (result.user.role === 'mandadito') {
-        navigate('/mandadito/dashboard');
-      } else if (result.user.role === 'admin') {
-        navigate('/admin/dashboard');
-      }
+      if (result.user.role === 'client') navigate('/client/orders');
+      else if (result.user.role === 'mandadito') navigate('/mandadito/dashboard');
+      else if (result.user.role === 'admin') navigate('/admin/dashboard');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-secondary/5 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white rounded-2xl shadow-medium p-8">
-        <div className="text-center">
-          <img src={logo} alt="Pueblo Click" className="mx-auto h-16 w-16" />
-          <h2 className="mt-4 text-3xl font-bold text-text">Bienvenido</h2>
-          <p className="mt-2 text-gray-500">Inicia sesión en tu cuenta</p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#FAF7F0] to-[#F5F0E6] py-12 px-4">
+      <div className="max-w-md w-full">
+        <div className="bg-white rounded-3xl shadow-xl p-8 md:p-10">
+          
+          {/* Logo Grande y Centrado */}
+          <div className="flex justify-center mb-8">
+            <img 
+              src={logo} 
+              alt="Pueblo Click" 
+              className="h-24 w-auto drop-shadow-md" 
+            />
+          </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-900">Bienvenido</h2>
+            <p className="text-gray-600 mt-2">Inicia sesión en tu cuenta</p>
+          </div>
+
+          <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Teléfono</label>
               <div className="relative">
-                <FiPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <FiPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl" />
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="input-field pl-10"
+                  className="input-field pl-12"
                   placeholder="50512345678"
                   required
                 />
@@ -55,47 +61,51 @@ const Login = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Contraseña</label>
               <div className="relative">
-                <FiLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl" />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="input-field pl-10"
-                  placeholder="••••••"
+                  className="input-field pl-12"
+                  placeholder="••••••••"
                   required
                 />
               </div>
             </div>
-          </div>
 
-          <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
-            {loading ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <>
-                <FiLogIn />
-                Iniciar Sesión
-              </>
-            )}
-          </button>
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="btn-primary w-full py-4 text-base font-semibold flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <FiLogIn className="text-xl" />
+                  Iniciar Sesión
+                </>
+              )}
+            </button>
+          </form>
 
-          <div className="text-center space-y-2">
-            <p className="text-sm text-gray-600">
+          <div className="mt-8 text-center space-y-3 text-sm">
+            <p className="text-gray-600">
               ¿No tienes cuenta?{' '}
-              <Link to="/register/client" className="text-primary hover:underline font-medium">
+              <Link to="/register/client" className="text-[#E6392E] font-semibold hover:underline">
                 Regístrate como Cliente
               </Link>
             </p>
-            <p className="text-sm text-gray-600">
+            <p className="text-gray-600">
               ¿Quieres ser Mandadito?{' '}
-              <Link to="/register/mandadito" className="text-secondary hover:underline font-medium">
+              <Link to="/register/mandadito" className="text-[#1E3A8A] font-semibold hover:underline">
                 Regístrate aquí
               </Link>
             </p>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { FiMenu, FiX, FiUser, FiLogOut, FiHome, FiPackage, FiDollarSign, FiUsers, FiMapPin, FiList } from 'react-icons/fi';
+import { FiMenu, FiX, FiLogOut, FiHome, FiPackage, FiDollarSign, FiUsers, FiMapPin } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
+import logo from '../../assets/logo.png';   // ← Tu logo real
 
 const Navbar = () => {
   const { user, logout, isClient, isMandadito, isAdmin } = useAuth();
@@ -54,15 +55,18 @@ const Navbar = () => {
 
   return (
     <>
-      <nav className="bg-white shadow-soft sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <nav className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2 shrink-0" onClick={() => setIsMenuOpen(false)}>
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-soft">
-                <span className="text-white font-bold text-xl">PC</span>
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent hidden sm:block">
+            
+            {/* Logo Real */}
+            <Link to="/" className="flex items-center gap-3" onClick={() => setIsMenuOpen(false)}>
+              <img 
+                src={logo} 
+                alt="Pueblo Click" 
+                className="h-11 w-auto" 
+              />
+              <span className="text-xl font-bold text-[#1E3A8A] hidden sm:block">
                 Pueblo Click
               </span>
             </Link>
@@ -73,106 +77,126 @@ const Navbar = () => {
                 <button
                   key={link.to}
                   onClick={() => handleNavigation(link.to)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 ${
-                    isActive(link.to)
-                      ? 'bg-primary text-white shadow-soft'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all
+                    ${isActive(link.to) 
+                      ? 'bg-[#E6392E] text-white' 
+                      : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                 >
                   <link.icon className="text-lg" />
-                  <span className="text-sm font-medium">{link.label}</span>
+                  {link.label}
                 </button>
               ))}
             </div>
 
-            {/* User Menu Desktop */}
+            {/* Desktop User Info + Logout */}
             {user && (
               <div className="hidden md:flex items-center gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center overflow-hidden">
-                      {user?.profilePhoto ? (
-                        <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <FiUser className="text-white" />
-                      )}
-                    </div>
-                    <div className="hidden lg:block">
-                      <p className="text-sm font-medium text-gray-700">{user.name}</p>
-                      {isMandadito && (
-                        <p className="text-xs text-secondary">Crédito: C${user.credit}</p>
-                      )}
-                    </div>
+                <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-2xl">
+                  <div className="w-8 h-8 rounded-full overflow-hidden border border-white shadow">
+                    {user?.profilePhoto ? (
+                      <img src={user.profilePhoto} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-[#E6392E] flex items-center justify-center text-white text-sm font-bold">
+                        {user.name?.charAt(0)}
+                      </div>
+                    )}
                   </div>
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50 transition-all"
-                  >
-                    <FiLogOut />
-                    <span className="text-sm">Salir</span>
-                  </button>
+                  <div className="text-sm">
+                    <p className="font-semibold text-gray-800">{user.name?.split(' ')[0]}</p>
+                    {isMandadito && (
+                      <p className="text-xs text-[#E6392E]">C${user.credit || 0}</p>
+                    )}
+                  </div>
                 </div>
+
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-2xl transition-all"
+                >
+                  <FiLogOut />
+                  <span className="font-medium">Salir</span>
+                </button>
               </div>
             )}
 
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 focus:outline-none"
+              className="md:hidden p-3 rounded-xl text-gray-700 hover:bg-gray-100"
             >
-              {isMenuOpen ? <FiX className="text-2xl" /> : <FiMenu className="text-2xl" />}
+              {isMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
             </button>
           </div>
         </div>
       </nav>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu Mejorado */}
       {isMenuOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setIsMenuOpen(false)} />
-          <div className="fixed top-0 right-0 w-64 h-full bg-white shadow-xl animate-slide-in-right">
-            <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-primary/5 to-secondary/5">
+        <div className="fixed inset-0 z-50 md:hidden bg-black/60" onClick={() => setIsMenuOpen(false)}>
+          <div 
+            className="fixed top-0 right-0 w-80 h-full bg-white shadow-2xl animate-slide-in-right overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header del menú móvil */}
+            <div className="p-5 border-b flex items-center justify-between bg-gradient-to-r from-[#E6392E]/5 to-white">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center overflow-hidden">
+                <img src={logo} alt="Logo" className="h-10 w-auto" />
+                <span className="font-bold text-xl text-[#1E3A8A]">Pueblo Click</span>
+              </div>
+              <button onClick={() => setIsMenuOpen(false)} className="p-2">
+                <FiX size={28} />
+              </button>
+            </div>
+
+            {/* Info del usuario */}
+            <div className="p-5 border-b">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-white shadow">
                   {user?.profilePhoto ? (
-                    <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
+                    <img src={user.profilePhoto} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    <FiUser className="text-white text-xl" />
+                    <div className="w-full h-full bg-[#E6392E] flex items-center justify-center text-white text-2xl">
+                      {user?.name?.charAt(0)}
+                    </div>
                   )}
                 </div>
                 <div>
-                  <p className="font-semibold text-dark">{user?.name}</p>
+                  <p className="font-semibold text-lg">{user?.name}</p>
+                  <p className="text-sm text-gray-500">{user?.phone}</p>
                   {isMandadito && (
-                    <p className="text-sm text-secondary">Crédito: C${user?.credit}</p>
+                    <p className="text-[#E6392E] font-medium">Crédito: C${user?.credit || 0}</p>
                   )}
                 </div>
               </div>
             </div>
-            
-            <div className="py-4">
+
+            {/* Enlaces */}
+            <div className="py-2">
               {links.map((link) => (
                 <button
                   key={link.to}
                   onClick={() => handleNavigation(link.to)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 transition-colors ${
-                    isActive(link.to)
-                      ? 'bg-primary/10 text-primary border-r-4 border-primary'
-                      : 'text-gray-600 hover:bg-gray-50'
-                  }`}
+                  className={`w-full flex items-center gap-4 px-6 py-4 text-left transition-all
+                    ${isActive(link.to) 
+                      ? 'bg-[#E6392E]/10 text-[#E6392E] border-r-4 border-[#E6392E]' 
+                      : 'text-gray-700 hover:bg-gray-50'
+                    }`}
                 >
-                  <link.icon className="text-xl" />
-                  <span className="font-medium">{link.label}</span>
+                  <link.icon className="text-2xl" />
+                  <span className="font-medium text-base">{link.label}</span>
                 </button>
               ))}
             </div>
-            
-            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100">
+
+            {/* Cerrar Sesión - Ahora arriba del todo en móvil */}
+            <div className="absolute bottom-6 left-0 right-0 px-6">
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                className="w-full flex items-center justify-center gap-3 bg-red-50 hover:bg-red-100 text-red-600 font-medium py-4 rounded-2xl transition-all"
               >
                 <FiLogOut className="text-xl" />
-                <span className="font-medium">Cerrar Sesión</span>
+                Cerrar Sesión
               </button>
             </div>
           </div>
