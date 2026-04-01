@@ -10,8 +10,8 @@
   }
 
   body {
-    font-family: 'Inter', system-ui, sans-serif;
-    background: linear-gradient(135deg, #FAF7F0 0%, #F5F0E6 100%);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #FFFFFF;
     color: #1F2937;
   }
 
@@ -20,37 +20,61 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: #F3EDE4;
+    background: #F3F4F6;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #E6392E;
+    background: #E63946;
     border-radius: 20px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #c92a2a;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-[#E6392E] hover:bg-[#DC2626] text-white font-semibold py-3 px-6 rounded-2xl 
-           transition-all active:scale-95 shadow-sm;
+    @apply bg-[#E63946] hover:bg-[#c92a2a] text-white font-semibold py-3 px-6 rounded-xl 
+           transition-all duration-200 active:scale-95 shadow-sm;
   }
 
   .btn-secondary {
-    @apply bg-[#1E3A8A] hover:bg-[#334155] text-white font-semibold py-3 px-6 rounded-2xl 
-           transition-all active:scale-95 shadow-sm;
+    @apply bg-[#1E3A8A] hover:bg-[#2c4a9e] text-white font-semibold py-3 px-6 rounded-xl 
+           transition-all duration-200 active:scale-95 shadow-sm;
   }
 
   .btn-outline {
-    @apply border-2 border-[#E6392E] text-[#E6392E] hover:bg-[#E6392E] hover:text-white 
-           font-semibold py-3 px-6 rounded-2xl transition-all active:scale-95;
+    @apply border-2 border-[#E63946] text-[#E63946] hover:bg-[#E63946] hover:text-white 
+           font-semibold py-3 px-6 rounded-xl transition-all duration-200 active:scale-95;
   }
 
   .input-field {
-    @apply w-full px-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none 
-           focus:ring-2 focus:ring-[#E6392E]/30 focus:border-[#E6392E] bg-white;
+    @apply w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none 
+           focus:ring-2 focus:ring-[#E63946]/30 focus:border-[#E63946] 
+           transition-all duration-200 bg-white;
   }
 
   .card {
-    @apply bg-white rounded-3xl shadow-sm p-6 hover:shadow-xl transition-all;
+    @apply bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300;
   }
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out;
 }

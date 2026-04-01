@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FiMenu, FiX, FiLogOut, FiHome, FiPackage, FiDollarSign, FiUsers, FiMapPin } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
-import logo from '../../assets/logo.png';   // ← Tu logo real
+import logo from '../../assets/logo.png';
 
 const Navbar = () => {
   const { user, logout, isClient, isMandadito, isAdmin } = useAuth();
@@ -55,20 +55,19 @@ const Navbar = () => {
 
   return (
     <>
-      <nav className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
+      <nav className="bg-white border-b sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex justify-between items-center h-16">
-            
-            {/* Logo Real */}
-            <Link to="/" className="flex items-center gap-3" onClick={() => setIsMenuOpen(false)}>
+          <div className="h-16 flex items-center justify-between">
+            {/* Logo */}
+            <Link to="/" className="flex items-center" onClick={() => setIsMenuOpen(false)}>
               <img 
                 src={logo} 
                 alt="Pueblo Click" 
-                className="h-11 w-auto" 
+                className="h-12 w-auto" 
+                onError={(e) => {
+                  e.target.src = 'https://via.placeholder.com/48?text=PC';
+                }}
               />
-              <span className="text-xl font-bold text-[#1E3A8A] hidden sm:block">
-                Pueblo Click
-              </span>
             </Link>
 
             {/* Desktop Menu */}
@@ -77,123 +76,97 @@ const Navbar = () => {
                 <button
                   key={link.to}
                   onClick={() => handleNavigation(link.to)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all
-                    ${isActive(link.to) 
-                      ? 'bg-[#E6392E] text-white' 
-                      : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                  className={`px-5 py-2 rounded-2xl text-sm font-medium flex items-center gap-2 transition-all ${
+                    isActive(link.to) ? 'bg-[#E6392E] text-white' : 'text-gray-700 hover:bg-gray-100'
+                  }`}
                 >
-                  <link.icon className="text-lg" />
+                  <link.icon className="text-xl" />
                   {link.label}
                 </button>
               ))}
             </div>
 
-            {/* Desktop User Info + Logout */}
+            {/* Desktop Logout */}
             {user && (
-              <div className="hidden md:flex items-center gap-4">
-                <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-2xl">
-                  <div className="w-8 h-8 rounded-full overflow-hidden border border-white shadow">
-                    {user?.profilePhoto ? (
-                      <img src={user.profilePhoto} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-[#E6392E] flex items-center justify-center text-white text-sm font-bold">
-                        {user.name?.charAt(0)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-sm">
-                    <p className="font-semibold text-gray-800">{user.name?.split(' ')[0]}</p>
-                    {isMandadito && (
-                      <p className="text-xs text-[#E6392E]">C${user.credit || 0}</p>
-                    )}
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-2xl transition-all"
-                >
-                  <FiLogOut />
-                  <span className="font-medium">Salir</span>
-                </button>
-              </div>
+              <button
+                onClick={handleLogout}
+                className="hidden md:flex items-center gap-2 text-red-600 hover:text-red-700 px-4 py-2 rounded-xl"
+              >
+                <FiLogOut /> Salir
+              </button>
             )}
 
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-3 rounded-xl text-gray-700 hover:bg-gray-100"
+              className="md:hidden p-3 text-gray-700"
             >
-              {isMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+              {isMenuOpen ? <FiX size={28} /> : <FiMenu size={28} />}
             </button>
           </div>
         </div>
       </nav>
 
-      {/* Mobile Menu Mejorado */}
+      {/* Mobile Menu - Mejorado */}
       {isMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden bg-black/60" onClick={() => setIsMenuOpen(false)}>
+        <div className="fixed inset-0 z-[60] bg-black/70 md:hidden" onClick={() => setIsMenuOpen(false)}>
           <div 
-            className="fixed top-0 right-0 w-80 h-full bg-white shadow-2xl animate-slide-in-right overflow-y-auto"
+            className="bg-white w-80 h-full ml-auto shadow-2xl flex flex-col"
             onClick={e => e.stopPropagation()}
           >
-            {/* Header del menú móvil */}
-            <div className="p-5 border-b flex items-center justify-between bg-gradient-to-r from-[#E6392E]/5 to-white">
-              <div className="flex items-center gap-3">
-                <img src={logo} alt="Logo" className="h-10 w-auto" />
-                <span className="font-bold text-xl text-[#1E3A8A]">Pueblo Click</span>
-              </div>
+            {/* Header */}
+            <div className="p-6 border-b flex items-center justify-between">
+              <img src={logo} alt="Logo" className="h-12 w-auto" />
               <button onClick={() => setIsMenuOpen(false)} className="p-2">
-                <FiX size={28} />
+                <FiX size={32} />
               </button>
             </div>
 
-            {/* Info del usuario */}
-            <div className="p-5 border-b">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-white shadow">
-                  {user?.profilePhoto ? (
-                    <img src={user.profilePhoto} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-[#E6392E] flex items-center justify-center text-white text-2xl">
-                      {user?.name?.charAt(0)}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <p className="font-semibold text-lg">{user?.name}</p>
-                  <p className="text-sm text-gray-500">{user?.phone}</p>
-                  {isMandadito && (
-                    <p className="text-[#E6392E] font-medium">Crédito: C${user?.credit || 0}</p>
-                  )}
+            {/* User Info */}
+            {user && (
+              <div className="p-6 border-b bg-gray-50">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-white shadow-sm">
+                    {user.profilePhoto ? (
+                      <img src={user.profilePhoto} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-[#E6392E] flex items-center justify-center text-white text-3xl font-bold">
+                        {user.name?.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-lg">{user.name}</p>
+                    <p className="text-sm text-gray-500">{user.phone}</p>
+                    {isMandadito && (
+                      <p className="text-[#E6392E] font-medium mt-1">Crédito: C${user.credit || 0}</p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Enlaces */}
-            <div className="py-2">
+            {/* Links */}
+            <div className="flex-1 p-4 space-y-1">
               {links.map((link) => (
                 <button
                   key={link.to}
                   onClick={() => handleNavigation(link.to)}
-                  className={`w-full flex items-center gap-4 px-6 py-4 text-left transition-all
-                    ${isActive(link.to) 
-                      ? 'bg-[#E6392E]/10 text-[#E6392E] border-r-4 border-[#E6392E]' 
-                      : 'text-gray-700 hover:bg-gray-50'
-                    }`}
+                  className={`w-full flex items-center gap-4 p-4 rounded-2xl text-left font-medium transition-all ${
+                    isActive(link.to) ? 'bg-[#E6392E]/10 text-[#E6392E]' : 'hover:bg-gray-100 text-gray-700'
+                  }`}
                 >
                   <link.icon className="text-2xl" />
-                  <span className="font-medium text-base">{link.label}</span>
+                  {link.label}
                 </button>
               ))}
             </div>
 
-            {/* Cerrar Sesión - Ahora arriba del todo en móvil */}
-            <div className="absolute bottom-6 left-0 right-0 px-6">
+            {/* Cerrar Sesión - Visible y Arriba */}
+            <div className="p-6 border-t mt-auto">
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-3 bg-red-50 hover:bg-red-100 text-red-600 font-medium py-4 rounded-2xl transition-all"
+                className="w-full bg-red-50 hover:bg-red-100 text-red-700 font-semibold py-4 rounded-2xl flex items-center justify-center gap-3 transition-all"
               >
                 <FiLogOut className="text-xl" />
                 Cerrar Sesión
