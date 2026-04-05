@@ -56,6 +56,7 @@ const Navbar = () => {
 
   return (
     <>
+      {/* Navbar principal */}
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-100 shadow-sm">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="flex justify-between items-center h-14 sm:h-16">
@@ -72,7 +73,7 @@ const Navbar = () => {
               </div>
             </Link>
 
-            {/* Desktop Menu - hidden on mobile */}
+            {/* Desktop Menu */}
             <div className="hidden md:flex items-center gap-1">
               {user && links.map((link) => (
                 <button
@@ -95,7 +96,7 @@ const Navbar = () => {
               <div className="hidden md:flex items-center gap-3 lg:gap-4">
                 <button className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors">
                   <FiBell className="text-xl text-gray-500" />
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#FF6B35] rounded-full animate-pulse"></span>
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#FF6B35] rounded-full animate-pulse" />
                 </button>
                 
                 <div className="flex items-center gap-2 lg:gap-3 pl-2 lg:pl-3 border-l border-gray-200">
@@ -125,7 +126,7 @@ const Navbar = () => {
               </div>
             )}
 
-            {/* Mobile Menu Button */}
+            {/* Mobile Menu Button - Hamburguesa */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="md:hidden p-2 rounded-xl text-gray-500 hover:bg-gray-100 transition-colors"
@@ -136,53 +137,65 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* Mobile Menu - Slide from right */}
+      {/* Mobile Menu - Slide from right con Cerrar Sesión debajo de los links */}
       {isMenuOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
+          {/* Overlay oscuro */}
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)} />
-          <div className="fixed top-0 right-0 w-4/5 max-w-sm h-full bg-white shadow-2xl animate-slide-in-right">
+          
+          {/* Panel del menú */}
+          <div className="fixed top-0 right-0 w-4/5 max-w-sm h-full bg-white shadow-2xl animate-slide-in-right flex flex-col">
+            {/* Header del menú móvil */}
             <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-[#FF6B35]/5 to-[#4361EE]/5">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF6B35] to-[#4361EE] flex items-center justify-center overflow-hidden">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FF6B35] to-[#4361EE] flex items-center justify-center overflow-hidden shadow-md">
                   {user?.profilePhoto ? (
                     <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
                   ) : (
-                    <FiUser className="text-white text-xl" />
+                    <FiUser className="text-white text-2xl" />
                   )}
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-800">{user?.name}</p>
+                  <p className="font-semibold text-gray-800 text-lg">{user?.name}</p>
                   {isMandadito && (
-                    <p className="text-sm text-[#FF6B35]">Crédito: C${user?.credit}</p>
+                    <p className="text-sm text-[#FF6B35] font-medium">💰 Crédito: C${user?.credit}</p>
+                  )}
+                  {isClient && (
+                    <p className="text-sm text-[#4361EE] font-medium">👤 Cliente</p>
+                  )}
+                  {isAdmin && (
+                    <p className="text-sm text-[#FF6B35] font-medium">👑 Administrador</p>
                   )}
                 </div>
               </div>
             </div>
             
-            <div className="py-2 overflow-y-auto h-[calc(100%-140px)]">
+            {/* Links del menú */}
+            <div className="py-2">
               {links.map((link) => (
                 <button
                   key={link.to}
                   onClick={() => handleNavigation(link.to)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 transition-all ${
+                  className={`w-full flex items-center gap-3 px-5 py-3.5 transition-all ${
                     isActive(link.to)
-                      ? 'bg-gradient-to-r from-[#FF6B35]/10 to-[#4361EE]/10 text-[#FF6B35] border-r-2 border-[#FF6B35]'
+                      ? 'bg-gradient-to-r from-[#FF6B35]/10 to-[#4361EE]/10 text-[#FF6B35] border-r-3 border-[#FF6B35]'
                       : 'text-gray-600 hover:bg-gray-50'
                   }`}
                 >
                   <link.icon className="text-xl" />
-                  <span className="font-medium">{link.label}</span>
+                  <span className="font-medium text-base">{link.label}</span>
                 </button>
               ))}
             </div>
             
-            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 bg-white">
+            {/* Botón de Cerrar Sesión - JUSTO DEBAJO DE LOS LINKS, ANTES DEL FINAL */}
+            <div className="p-4 border-t border-gray-100 mt-2">
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                className="w-full flex items-center justify-center gap-3 px-4 py-3.5 text-red-500 font-semibold bg-red-50 hover:bg-red-100 rounded-xl transition-all"
               >
                 <FiLogOut className="text-xl" />
-                <span className="font-medium">Cerrar Sesión</span>
+                <span className="text-base">Cerrar Sesión</span>
               </button>
             </div>
           </div>
