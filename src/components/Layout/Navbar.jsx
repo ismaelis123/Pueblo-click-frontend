@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { 
-  FiMenu, FiX, FiLogOut, FiHome, FiPackage, FiDollarSign, 
-  FiUsers, FiMapPin, FiUser, FiBell 
-} from 'react-icons/fi';
+import { FiMenu, FiX, FiLogOut, FiHome, FiPackage, FiDollarSign, FiUsers, FiMapPin, FiUser, FiBell } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import logo from '../../assets/logo.png';
 
@@ -59,32 +56,32 @@ const Navbar = () => {
 
   return (
     <>
-      <nav className="sticky top-0 z-50 bg-[#1A1A2E]/90 backdrop-blur-xl border-b border-[#2A2A3E]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex justify-between items-center h-16">
+      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-100 shadow-sm">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="flex justify-between items-center h-14 sm:h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-3 group" onClick={() => setIsMenuOpen(false)}>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF6B35] to-[#6C63FF] flex items-center justify-center shadow-lg animate-float">
-                <span className="text-white font-bold text-xl">PC</span>
+            <Link to="/" className="flex items-center gap-2 sm:gap-3 group" onClick={() => setIsMenuOpen(false)}>
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#FF6B35] to-[#4361EE] flex items-center justify-center shadow-md">
+                <span className="text-white font-bold text-base sm:text-xl">PC</span>
               </div>
-              <div className="hidden sm:block">
-                <span className="text-xl font-bold bg-gradient-to-r from-[#FF6B35] to-[#6C63FF] bg-clip-text text-transparent">
+              <div className="hidden xs:block">
+                <span className="text-base sm:text-xl font-bold bg-gradient-to-r from-[#FF6B35] to-[#4361EE] bg-clip-text text-transparent">
                   Pueblo Click
                 </span>
-                <p className="text-xs text-gray-400">Rápido y Confiable</p>
+                <p className="text-xs text-gray-500 hidden sm:block">Rápido y Confiable</p>
               </div>
             </Link>
 
-            {/* Desktop Menu */}
+            {/* Desktop Menu - hidden on mobile */}
             <div className="hidden md:flex items-center gap-1">
               {user && links.map((link) => (
                 <button
                   key={link.to}
                   onClick={() => handleNavigation(link.to)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 ${
+                  className={`flex items-center gap-2 px-3 lg:px-4 py-2 rounded-xl transition-all duration-200 ${
                     isActive(link.to)
-                      ? 'bg-gradient-to-r from-[#FF6B35] to-[#6C63FF] text-white shadow-lg'
-                      : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                      ? 'bg-gradient-to-r from-[#FF6B35] to-[#4361EE] text-white shadow-md'
+                      : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
                   <link.icon className="text-lg" />
@@ -95,31 +92,31 @@ const Navbar = () => {
 
             {/* User Menu Desktop */}
             {user && (
-              <div className="hidden md:flex items-center gap-4">
-                <button className="relative p-2 rounded-xl hover:bg-white/10 transition-colors">
-                  <FiBell className="text-xl text-gray-300" />
+              <div className="hidden md:flex items-center gap-3 lg:gap-4">
+                <button className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors">
+                  <FiBell className="text-xl text-gray-500" />
                   <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#FF6B35] rounded-full animate-pulse"></span>
                 </button>
                 
-                <div className="flex items-center gap-3 pl-3 border-l border-[#2A2A3E]">
+                <div className="flex items-center gap-2 lg:gap-3 pl-2 lg:pl-3 border-l border-gray-200">
                   <div className="flex items-center gap-2">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#FF6B35] to-[#6C63FF] flex items-center justify-center overflow-hidden">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#FF6B35]/10 to-[#4361EE]/10 flex items-center justify-center overflow-hidden">
                       {user?.profilePhoto ? (
                         <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
                       ) : (
-                        <FiUser className="text-white" />
+                        <FiUser className="text-[#FF6B35]" />
                       )}
                     </div>
                     <div className="hidden lg:block">
-                      <p className="text-sm font-medium text-white">{user.name}</p>
+                      <p className="text-sm font-medium text-gray-800">{user.name}</p>
                       {isMandadito && (
-                        <p className="text-xs text-[#00E5FF]">Crédito: C${user.credit}</p>
+                        <p className="text-xs text-[#FF6B35]">Crédito: C${user.credit}</p>
                       )}
                     </div>
                   </div>
                   <button
                     onClick={handleLogout}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-red-400 hover:bg-red-500/10 transition-all"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-red-500 hover:bg-red-50 transition-all"
                   >
                     <FiLogOut />
                     <span className="text-sm">Salir</span>
@@ -131,7 +128,7 @@ const Navbar = () => {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 rounded-xl text-gray-300 hover:bg-white/10 transition-colors"
+              className="md:hidden p-2 rounded-xl text-gray-500 hover:bg-gray-100 transition-colors"
             >
               {isMenuOpen ? <FiX className="text-2xl" /> : <FiMenu className="text-2xl" />}
             </button>
@@ -139,14 +136,14 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu - Slide from right */}
       {isMenuOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)} />
-          <div className="fixed top-0 right-0 w-72 h-full bg-[#1A1A2E] border-l border-[#2A2A3E] shadow-2xl animate-slide-in-right">
-            <div className="p-5 border-b border-[#2A2A3E] bg-gradient-to-r from-[#FF6B35]/10 to-[#6C63FF]/10">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)} />
+          <div className="fixed top-0 right-0 w-4/5 max-w-sm h-full bg-white shadow-2xl animate-slide-in-right">
+            <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-[#FF6B35]/5 to-[#4361EE]/5">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FF6B35] to-[#6C63FF] flex items-center justify-center overflow-hidden">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF6B35] to-[#4361EE] flex items-center justify-center overflow-hidden">
                   {user?.profilePhoto ? (
                     <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
                   ) : (
@@ -154,23 +151,23 @@ const Navbar = () => {
                   )}
                 </div>
                 <div>
-                  <p className="font-semibold text-white">{user?.name}</p>
+                  <p className="font-semibold text-gray-800">{user?.name}</p>
                   {isMandadito && (
-                    <p className="text-sm text-[#00E5FF]">Crédito: C${user?.credit}</p>
+                    <p className="text-sm text-[#FF6B35]">Crédito: C${user?.credit}</p>
                   )}
                 </div>
               </div>
             </div>
             
-            <div className="py-4">
+            <div className="py-2 overflow-y-auto h-[calc(100%-140px)]">
               {links.map((link) => (
                 <button
                   key={link.to}
                   onClick={() => handleNavigation(link.to)}
-                  className={`w-full flex items-center gap-3 px-5 py-3 transition-all ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 transition-all ${
                     isActive(link.to)
-                      ? 'bg-gradient-to-r from-[#FF6B35]/20 to-[#6C63FF]/20 text-white border-r-2 border-[#FF6B35]'
-                      : 'text-gray-300 hover:bg-white/5'
+                      ? 'bg-gradient-to-r from-[#FF6B35]/10 to-[#4361EE]/10 text-[#FF6B35] border-r-2 border-[#FF6B35]'
+                      : 'text-gray-600 hover:bg-gray-50'
                   }`}
                 >
                   <link.icon className="text-xl" />
@@ -179,10 +176,10 @@ const Navbar = () => {
               ))}
             </div>
             
-            <div className="absolute bottom-0 left-0 right-0 p-5 border-t border-[#2A2A3E]">
+            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 bg-white">
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+                className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl transition-all"
               >
                 <FiLogOut className="text-xl" />
                 <span className="font-medium">Cerrar Sesión</span>

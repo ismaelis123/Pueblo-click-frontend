@@ -10,18 +10,13 @@ const Footer = () => {
 
   if (!user) return null;
 
-  const handleNavigation = (path) => {
-    navigate(path);
-  };
-
-  const isActive = (path) => {
-    return location.pathname === path;
-  };
+  const handleNavigation = (path) => navigate(path);
+  const isActive = (path) => location.pathname === path;
 
   const clientLinks = [
     { to: '/client/orders', icon: FiPackage, label: 'Órdenes' },
     { to: '/client/create-order', icon: FiHome, label: 'Nuevo' },
-    { to: '/profile', icon: FiUser, label: 'Perfil' },
+    { to: '/client/mandaditos', icon: FiUser, label: 'Mandaditos' },
   ];
 
   const mandaditoLinks = [
@@ -34,7 +29,7 @@ const Footer = () => {
   const links = isClient ? clientLinks : isMandadito ? mandaditoLinks : [];
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-soft z-40 md:hidden">
+    <footer className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-100 shadow-lg z-40 md:hidden">
       <div className="flex justify-around items-center py-2">
         {links.map((link) => {
           const active = isActive(link.to);
@@ -43,10 +38,8 @@ const Footer = () => {
             <button
               key={link.to}
               onClick={() => handleNavigation(link.to)}
-              className={`flex flex-col items-center gap-1 px-4 py-1 rounded-lg transition-all ${
-                active
-                  ? 'text-primary'
-                  : 'text-gray-400'
+              className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all ${
+                active ? 'text-[#FF6B35] bg-[#FF6B35]/10' : 'text-gray-400'
               }`}
             >
               <Icon className={`text-xl ${active ? 'drop-shadow-sm' : ''}`} />

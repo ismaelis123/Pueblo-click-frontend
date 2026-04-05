@@ -6,6 +6,7 @@ import ProtectedRoute from './components/Common/ProtectedRoute';
 import Navbar from './components/Layout/Navbar';
 import Footer from './components/Layout/Footer';
 import Background from './components/Layout/Background';
+import InstallButton from './components/Common/InstallButton';
 
 // Auth
 import Login from './components/Auth/Login';
@@ -98,7 +99,6 @@ function App() {
             </ProtectedRoute>
           } />
           
-          {/* NUEVA RUTA: Seguimiento en mapa */}
           <Route path="/client/track/:orderId" element={
             <ProtectedRoute roles={['client']}>
               <OrderTracking />
@@ -142,7 +142,6 @@ function App() {
             </ProtectedRoute>
           } />
           
-          {/* NUEVA RUTA: Compartir ubicación */}
           <Route path="/mandadito/share-location/:orderId" element={
             <ProtectedRoute roles={['mandadito']}>
               <ShareLocation />
@@ -193,6 +192,7 @@ function App() {
       </main>
 
       {isAuthenticated && <Footer />}
+      <InstallButton />
     </Background>
   );
 }
@@ -201,13 +201,13 @@ function App() {
 const Profile = () => {
   const { user } = useAuth();
   return (
-    <div className="max-w-md mx-auto py-8 px-4">
-      <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
-        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#E63946]/20 to-[#1E3A8A]/20 mx-auto mb-4 flex items-center justify-center overflow-hidden">
+    <div className="container mx-auto py-8 px-4">
+      <div className="max-w-md mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
+        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#FF6B35]/20 to-[#4361EE]/20 mx-auto mb-4 flex items-center justify-center overflow-hidden">
           {user?.profilePhoto ? (
             <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
           ) : (
-            <span className="text-4xl font-bold text-[#E63946]">{user?.name?.charAt(0) || '?'}</span>
+            <span className="text-4xl font-bold text-[#FF6B35]">{user?.name?.charAt(0) || '?'}</span>
           )}
         </div>
         <h2 className="text-xl font-bold text-gray-800">{user?.name}</h2>
@@ -216,7 +216,7 @@ const Profile = () => {
           Rol: {user?.role === 'client' ? 'Cliente' : user?.role === 'mandadito' ? 'Mandadito' : 'Administrador'}
         </p>
         {user?.role === 'mandadito' && (
-          <p className="text-[#E63946] font-bold mt-3">Crédito: C${user?.credit || 0}</p>
+          <p className="text-[#FF6B35] font-bold mt-3">Crédito: C${user?.credit || 0}</p>
         )}
         {user?.rating > 0 && (
           <div className="flex justify-center gap-1 mt-4">
