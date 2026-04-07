@@ -9,21 +9,22 @@ import './index.css';
 // Registrar Service Worker para PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(registration => {
-      console.log('✅ Service Worker registrado:', registration);
-    }).catch(error => {
-      console.log('❌ Service Worker error:', error);
-    });
+    navigator.serviceWorker.register('/sw.js')
+      .then(registration => {
+        console.log('✅ Service Worker registrado correctamente:', registration);
+      })
+      .catch(error => {
+        console.log('❌ Error al registrar Service Worker:', error);
+      });
   });
 }
 
-// Verificar si la app se puede instalar
+// Detectar si la app se puede instalar como PWA
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  console.log('✅ App se puede instalar');
-  // Puedes mostrar un botón de instalación
+  console.log('✅ App lista para instalar como PWA');
   window.dispatchEvent(new CustomEvent('pwa-install-ready', { detail: deferredPrompt }));
 });
 
@@ -36,9 +37,17 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           position="top-right"
           toastOptions={{
             duration: 4000,
-            style: { background: '#1F2937', color: '#FFFFFF', borderRadius: '12px' },
-            success: { iconTheme: { primary: '#10B981', secondary: '#FFFFFF' } },
-            error: { iconTheme: { primary: '#EF4444', secondary: '#FFFFFF' } }
+            style: {
+              background: '#1F2937',
+              color: '#FFFFFF',
+              borderRadius: '12px',
+            },
+            success: {
+              iconTheme: { primary: '#10B981', secondary: '#FFFFFF' }
+            },
+            error: {
+              iconTheme: { primary: '#EF4444', secondary: '#FFFFFF' }
+            }
           }}
         />
       </AuthProvider>
