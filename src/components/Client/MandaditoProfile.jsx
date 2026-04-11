@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   FiStar, FiPhone, FiArrowLeft, FiCalendar, FiUser, 
-  FiMessageSquare, FiSend, FiCheck, FiX, FiFileText, 
-  FiShield, FiTruck, FiCamera, FiCheckCircle, FiMapPin
+  FiMessageSquare, FiSend, FiX, FiFileText, 
+  FiShield, FiTruck, FiCamera, FiCheckCircle, FiMapPin, FiClock
 } from 'react-icons/fi';
 import api from '../../services/api';
 import LoadingSpinner from '../Common/LoadingSpinner';
@@ -88,28 +88,20 @@ const MandaditoProfile = () => {
 
   return (
     <Background>
-      <div className="max-w-4xl mx-auto py-8 px-4 pb-24 md:pb-8">
-        {/* Botón volver */}
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-gray-500 hover:text-[#E63946] mb-6 transition-colors"
-        >
+      <div className="container mx-auto py-8 px-4 pb-24 md:pb-8">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-500 hover:text-[#FF6B35] mb-6 transition-colors">
           <FiArrowLeft /> Volver
         </button>
         
         {/* Perfil principal */}
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-[#E63946] to-[#1E3A8A] h-24" />
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+          <div className="bg-gradient-to-r from-[#FF6B35] to-[#4361EE] h-24" />
           <div className="px-6 pb-6">
             <div className="flex flex-col md:flex-row items-center md:items-end -mt-12 mb-4">
               <div className="w-28 h-28 rounded-full bg-white p-1 shadow-lg">
                 <div className="w-full h-full rounded-full overflow-hidden bg-gray-100">
                   {mandadito?.profilePhoto ? (
-                    <img 
-                      src={mandadito.profilePhoto} 
-                      alt={mandadito.name} 
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={mandadito.profilePhoto} alt={mandadito.name} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gray-200">
                       <FiUser className="text-4xl text-gray-400" />
@@ -126,21 +118,30 @@ const MandaditoProfile = () => {
                   ))}
                   <span className="ml-2 text-sm text-gray-500">({mandadito?.totalRatings || 0} calificaciones)</span>
                 </div>
+                
+                {/* Mostrar horario */}
+                {mandadito?.workSchedule?.enabled && (
+                  <div className="flex justify-center md:justify-start items-center gap-2 mt-2 text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">
+                    <FiClock className="text-sm" />
+                    <span>Horario: {mandadito.workSchedule.startTime} - {mandadito.workSchedule.endTime}</span>
+                  </div>
+                )}
+                
                 {mandadito?.isVerified && (
-                  <span className="inline-flex items-center gap-1 mt-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                  <span className="inline-flex items-center gap-1 mt-2 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
                     <FiCheckCircle className="text-xs" /> Verificado
                   </span>
                 )}
               </div>
               <div className="flex gap-2 mt-4 md:mt-0">
-                <button onClick={handleCall} className="bg-[#1E3A8A] text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-[#2c4a9e] transition-colors">
+                <button onClick={handleCall} className="bg-[#4361EE] text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-[#2c4a9e] transition-colors">
                   <FiPhone /> Llamar
                 </button>
                 <button onClick={handleWhatsApp} className="bg-green-500 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-green-600 transition-colors">
                   <FiMessageSquare /> WhatsApp
                 </button>
                 {mandadito?.isAvailable && mandadito?.isVerified && (
-                  <button onClick={() => setShowModal(true)} className="bg-[#E63946] text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-[#c92a2a] transition-colors">
+                  <button onClick={() => setShowModal(true)} className="bg-[#FF6B35] text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-[#e55a2b] transition-colors">
                     <FiSend /> Asignar
                   </button>
                 )}
@@ -152,7 +153,7 @@ const MandaditoProfile = () => {
               ) : !mandadito?.isVerified ? (
                 <span className="text-yellow-500">🟡 Pendiente de verificación</span>
               ) : (
-                <span className="text-red-500">🔴 No disponible</span>
+                <span className="text-red-500">🔴 No disponible en este momento</span>
               )}
             </div>
           </div>
@@ -160,9 +161,9 @@ const MandaditoProfile = () => {
         
         {/* Fotos del vehículo */}
         {mandadito?.motoPhotos?.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <FiTruck className="text-[#E63946]" /> Fotos del vehículo
+              <FiTruck className="text-[#FF6B35]" /> Fotos del vehículo
             </h2>
             <div className="grid grid-cols-2 gap-3">
               {mandadito.motoPhotos.map((photo, idx) => (
@@ -173,37 +174,37 @@ const MandaditoProfile = () => {
         )}
         
         {/* Documentos */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <FiFileText className="text-[#E63946]" /> Documentos verificados
+            <FiFileText className="text-[#FF6B35]" /> Documentos verificados
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {mandadito?.cedulaPhoto && (
               <div className="border border-gray-200 rounded-xl p-3 text-center">
                 <FiFileText className="text-2xl text-green-500 mx-auto mb-1" />
                 <p className="text-xs text-gray-500">Cédula</p>
-                <button onClick={() => window.open(mandadito.cedulaPhoto, '_blank')} className="text-xs text-[#E63946] hover:underline mt-1">Ver</button>
+                <button onClick={() => window.open(mandadito.cedulaPhoto, '_blank')} className="text-xs text-[#FF6B35] hover:underline mt-1">Ver</button>
               </div>
             )}
             {mandadito?.seguroPhoto && (
               <div className="border border-gray-200 rounded-xl p-3 text-center">
                 <FiShield className="text-2xl text-green-500 mx-auto mb-1" />
                 <p className="text-xs text-gray-500">Seguro</p>
-                <button onClick={() => window.open(mandadito.seguroPhoto, '_blank')} className="text-xs text-[#E63946] hover:underline mt-1">Ver</button>
+                <button onClick={() => window.open(mandadito.seguroPhoto, '_blank')} className="text-xs text-[#FF6B35] hover:underline mt-1">Ver</button>
               </div>
             )}
             {mandadito?.licenciaPhoto && (
               <div className="border border-gray-200 rounded-xl p-3 text-center">
                 <FiCamera className="text-2xl text-green-500 mx-auto mb-1" />
                 <p className="text-xs text-gray-500">Licencia</p>
-                <button onClick={() => window.open(mandadito.licenciaPhoto, '_blank')} className="text-xs text-[#E63946] hover:underline mt-1">Ver</button>
+                <button onClick={() => window.open(mandadito.licenciaPhoto, '_blank')} className="text-xs text-[#FF6B35] hover:underline mt-1">Ver</button>
               </div>
             )}
           </div>
         </div>
         
         {/* Calificaciones */}
-        <div className="bg-white rounded-2xl shadow-lg p-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">📝 Calificaciones</h2>
           {ratings.length === 0 ? (
             <p className="text-gray-500 text-center py-4">Aún no hay calificaciones</p>
@@ -232,97 +233,58 @@ const MandaditoProfile = () => {
         </div>
       </div>
 
-      {/* MODAL FLOTANTE para asignar mandado */}
+      {/* MODAL para asignar mandado */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
-          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
-            {/* Header del modal */}
-            <div className="sticky top-0 bg-gradient-to-r from-[#E63946] to-[#1E3A8A] px-6 py-4 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-white">Asignar Mandado</h2>
-              <button onClick={() => setShowModal(false)} className="text-white hover:bg-white/20 p-1 rounded-full transition-colors">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowModal(false)}>
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-gradient-to-r from-[#FF6B35] to-[#4361EE] px-6 py-4 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                  <FiSend className="text-white" />
+                </div>
+                <h2 className="text-xl font-bold text-white">Asignar Mandado</h2>
+              </div>
+              <button onClick={() => setShowModal(false)} className="text-white hover:bg-white/20 p-2 rounded-lg transition-colors">
                 <FiX className="text-2xl" />
               </button>
             </div>
-            
             <div className="p-6">
-              <p className="text-gray-600 mb-4 text-sm">
-                Asignando mandado a <span className="font-semibold text-[#E63946]">{mandadito?.name}</span>
-              </p>
-              
+              <div className="bg-gradient-to-r from-[#FF6B35]/10 to-[#4361EE]/10 rounded-xl p-4 mb-4">
+                <p className="text-gray-700 text-sm flex items-center gap-2">
+                  <FiUser className="text-[#FF6B35]" />
+                  Asignando a: <span className="font-semibold text-gray-900">{mandadito?.name}</span>
+                </p>
+              </div>
               <form onSubmit={handleAssignOrder} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Descripción del mandado *</label>
-                  <textarea
-                    name="description"
-                    value={orderData.description}
-                    onChange={handleOrderChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E63946]/30 focus:border-[#E63946] transition-all"
-                    rows="3"
-                    placeholder="Ej: Traer almuerzo del restaurante El Sazón..."
-                    required
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Descripción *</label>
+                  <textarea name="description" value={orderData.description} onChange={handleOrderChange} className="input-field" rows="3" placeholder="Ej: Traer almuerzo..." required />
                 </div>
-                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Dirección de recogida *</label>
                   <div className="relative">
                     <FiMapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      name="pickupAddress"
-                      value={orderData.pickupAddress}
-                      onChange={handleOrderChange}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E63946]/30 focus:border-[#E63946] transition-all"
-                      placeholder="Ej: Restaurante El Sazón, Calle Central"
-                      required
-                    />
+                    <input type="text" name="pickupAddress" value={orderData.pickupAddress} onChange={handleOrderChange} className="input-field pl-10" placeholder="Dirección" required />
                   </div>
                 </div>
-                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Dirección de entrega *</label>
                   <div className="relative">
                     <FiMapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      name="deliveryAddress"
-                      value={orderData.deliveryAddress}
-                      onChange={handleOrderChange}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E63946]/30 focus:border-[#E63946] transition-all"
-                      placeholder="Ej: Barrio San José, casa 23"
-                      required
-                    />
+                    <input type="text" name="deliveryAddress" value={orderData.deliveryAddress} onChange={handleOrderChange} className="input-field pl-10" placeholder="Dirección" required />
                   </div>
                 </div>
-                
-                <div className="bg-gray-50 rounded-xl p-4">
+                <div className="bg-gray-50 rounded-xl p-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Costo del mandado:</span>
-                    <span className="font-bold text-[#E63946] text-lg">C$ 5.00</span>
+                    <span className="text-gray-600 text-sm">Costo:</span>
+                    <span className="font-bold text-[#FF6B35] text-lg">C$ 5.00</span>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">*Se descontará del crédito del mandadito al aceptar</p>
+                  <p className="text-xs text-gray-400 mt-1">*Se descuenta del crédito al aceptar</p>
                 </div>
-                
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className="flex-1 border border-gray-300 text-gray-600 py-3 rounded-xl hover:bg-gray-50 transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={sending}
-                    className="flex-1 bg-[#E63946] text-white py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-[#c92a2a] transition-colors disabled:opacity-50"
-                  >
-                    {sending ? (
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <FiSend /> Enviar
-                      </>
-                    )}
+                <div className="flex gap-3 pt-2">
+                  <button type="button" onClick={() => setShowModal(false)} className="flex-1 border border-gray-300 text-gray-600 py-3 rounded-xl hover:bg-gray-50 text-sm">Cancelar</button>
+                  <button type="submit" disabled={sending} className="flex-1 bg-[#FF6B35] text-white py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-[#e55a2b] disabled:opacity-50 text-sm">
+                    {sending ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><FiSend /> Enviar</>}
                   </button>
                 </div>
               </form>
