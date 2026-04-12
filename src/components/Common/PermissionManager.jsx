@@ -11,13 +11,20 @@ const PermissionManager = () => {
 
   useEffect(() => {
     setPermissions({ notifications: permission === 'granted', location: false });
-  }, [permission]);
+    
+    // Verificar ubicación automáticamente
+    if (user?.role === 'mandadito' && navigator.geolocation) {
+      navigator.permissions?.query({ name: 'geolocation' }).then(result => {
+        setPermissions(prev => ({ ...prev, location: result.state === 'granted' }));
+      });
+    }
+  }, [permission, user]);
 
   const requestLocationPermission = () => {
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         () => setPermissions(prev => ({ ...prev, location: true })),
-        () => {},
+        () => setPermissions(prev => ({ ...prev, location: false })),
         { enableHighAccuracy: true, timeout: 10000 }
       );
     }
