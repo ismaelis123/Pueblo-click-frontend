@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   FiStar, FiPhone, FiArrowLeft, FiCalendar, FiUser, 
   FiMessageSquare, FiSend, FiX, FiFileText, 
-  FiShield, FiTruck, FiCamera, FiCheckCircle, FiMapPin, FiClock
+  FiShield, FiTruck, FiCamera, FiCheckCircle, FiMapPin, FiClock,
+  FiCheck, FiEye
 } from 'react-icons/fi';
 import api from '../../services/api';
 import LoadingSpinner from '../Common/LoadingSpinner';
@@ -18,6 +19,9 @@ const MandaditoProfile = () => {
   const [ratings, setRatings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImageTitle, setSelectedImageTitle] = useState('');
   const [orderData, setOrderData] = useState({
     description: '',
     pickupAddress: '',
@@ -32,6 +36,7 @@ const MandaditoProfile = () => {
   const fetchMandaditoProfile = async () => {
     try {
       const response = await api.get(`/client/mandaditos/${id}`);
+      console.log('Mandadito recibido:', response.data.mandadito);
       setMandadito(response.data.mandadito);
       setRatings(response.data.ratings);
     } catch (error) {
@@ -84,7 +89,16 @@ const MandaditoProfile = () => {
     }
   };
 
+  const openImageViewer = (imageUrl, title) => {
+    setSelectedImage(imageUrl);
+    setSelectedImageTitle(title);
+    setShowImageModal(true);
+  };
+
   if (loading) return <LoadingSpinner />;
+
+  const isAvailable = mandadito?.isAvailable === true;
+  const canAssign = isAvailable && mandadito?.isVerified === true;
 
   return (
     <Background>
@@ -101,7 +115,12 @@ const MandaditoProfile = () => {
               <div className="w-28 h-28 rounded-full bg-white p-1 shadow-lg">
                 <div className="w-full h-full rounded-full overflow-hidden bg-gray-100">
                   {mandadito?.profilePhoto ? (
-                    <img src={mandadito.profilePhoto} alt={mandadito.name} className="w-full h-full object-cover" />
+                    <img 
+                      src={mandadito.profilePhoto} 
+                      alt={mandadito.name} 
+                      className="w-full h-full object-cover cursor-pointer"
+                      onClick={() => openImageViewer(mandadito.profilePhoto, 'Foto de perfil')}
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gray-200">
                       <FiUser className="text-4xl text-gray-400" />
@@ -119,9 +138,8 @@ const MandaditoProfile = () => {
                   <span className="ml-2 text-sm text-gray-500">({mandadito?.totalRatings || 0} calificaciones)</span>
                 </div>
                 
-                {/* Mostrar horario */}
                 {mandadito?.workSchedule?.enabled && (
-                  <div className="flex justify-center md:justify-start items-center gap-2 mt-2 text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">
+                  <div className="flex justify-center md:justify-start items-center gap-2 mt-2 text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full inline-flex">
                     <FiClock className="text-sm" />
                     <span>Horario: {mandadito.workSchedule.startTime} - {mandadito.workSchedule.endTime}</span>
                   </div>
@@ -140,22 +158,39 @@ const MandaditoProfile = () => {
                 <button onClick={handleWhatsApp} className="bg-green-500 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-green-600 transition-colors">
                   <FiMessageSquare /> WhatsApp
                 </button>
-                {mandadito?.isAvailable && mandadito?.isVerified && (
+                {canAssign ? (
                   <button onClick={() => setShowModal(true)} className="bg-[#FF6B35] text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-[#e55a2b] transition-colors">
                     <FiSend /> Asignar
+                  </button>
+                ) : (
+                  <button disabled className="bg-gray-300 text-gray-500 px-4 py-2 rounded-xl flex items-center gap-2 cursor-not-allowed">
+                    <FiSend /> No disponible
                   </button>
                 )}
               </div>
             </div>
-            <div className="text-sm text-gray-500 mb-4">
-              {mandadito?.isAvailable && mandadito?.isVerified ? (
-                <span className="text-green-500">🟢 Disponible para mandados</span>
-              ) : !mandadito?.isVerified ? (
-                <span className="text-yellow-500">🟡 Pendiente de verificación</span>
+            
+            <div className="text-sm mt-2">
+              {mandadito?.isVerified === false ? (
+                <span className="text-yellow-500 bg-yellow-50 px-3 py-1 rounded-full inline-flex items-center gap-1">
+                  🟡 Pendiente de verificación por el administrador
+                </span>
+              ) : isAvailable ? (
+                <span className="text-green-500 bg-green-50 px-3 py-1 rounded-full inline-flex items-center gap-1">
+                  🟢 <FiCheck className="text-sm" /> Disponible para mandados
+                </span>
               ) : (
-                <span className="text-red-500">🔴 No disponible en este momento</span>
+                <span className="text-red-500 bg-red-50 px-3 py-1 rounded-full inline-flex items-center gap-1">
+                  🔴 No disponible en este momento
+                </span>
               )}
             </div>
+            
+            {!isAvailable && mandadito?.isVerified && (
+              <p className="text-xs text-gray-500 mt-2">
+                El mandadito ha desactivado su disponibilidad o está fuera de su horario laboral.
+              </p>
+            )}
           </div>
         </div>
         
@@ -167,7 +202,16 @@ const MandaditoProfile = () => {
             </h2>
             <div className="grid grid-cols-2 gap-3">
               {mandadito.motoPhotos.map((photo, idx) => (
-                <img key={idx} src={photo} alt={`Vehículo ${idx + 1}`} className="w-full h-32 object-cover rounded-xl border border-gray-200" />
+                <div 
+                  key={idx} 
+                  className="relative group cursor-pointer rounded-xl overflow-hidden border border-gray-200"
+                  onClick={() => openImageViewer(photo, `Foto del vehículo ${idx + 1}`)}
+                >
+                  <img src={photo} alt={`Vehículo ${idx + 1}`} className="w-full h-32 object-cover" />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <FiEye className="text-white text-2xl" />
+                  </div>
+                </div>
               ))}
             </div>
           </div>
@@ -178,26 +222,26 @@ const MandaditoProfile = () => {
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <FiFileText className="text-[#FF6B35]" /> Documentos verificados
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {mandadito?.cedulaPhoto && (
-              <div className="border border-gray-200 rounded-xl p-3 text-center">
-                <FiFileText className="text-2xl text-green-500 mx-auto mb-1" />
-                <p className="text-xs text-gray-500">Cédula</p>
-                <button onClick={() => window.open(mandadito.cedulaPhoto, '_blank')} className="text-xs text-[#FF6B35] hover:underline mt-1">Ver</button>
+              <div className="border border-gray-200 rounded-xl p-3 text-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => openImageViewer(mandadito.cedulaPhoto, 'Cédula')}>
+                <FiFileText className="text-3xl text-green-500 mx-auto mb-2" />
+                <p className="text-sm font-medium text-gray-700">Cédula</p>
+                <p className="text-xs text-gray-400 mt-1">Haz clic para ver</p>
               </div>
             )}
             {mandadito?.seguroPhoto && (
-              <div className="border border-gray-200 rounded-xl p-3 text-center">
-                <FiShield className="text-2xl text-green-500 mx-auto mb-1" />
-                <p className="text-xs text-gray-500">Seguro</p>
-                <button onClick={() => window.open(mandadito.seguroPhoto, '_blank')} className="text-xs text-[#FF6B35] hover:underline mt-1">Ver</button>
+              <div className="border border-gray-200 rounded-xl p-3 text-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => openImageViewer(mandadito.seguroPhoto, 'Seguro')}>
+                <FiShield className="text-3xl text-green-500 mx-auto mb-2" />
+                <p className="text-sm font-medium text-gray-700">Seguro</p>
+                <p className="text-xs text-gray-400 mt-1">Haz clic para ver</p>
               </div>
             )}
             {mandadito?.licenciaPhoto && (
-              <div className="border border-gray-200 rounded-xl p-3 text-center">
-                <FiCamera className="text-2xl text-green-500 mx-auto mb-1" />
-                <p className="text-xs text-gray-500">Licencia</p>
-                <button onClick={() => window.open(mandadito.licenciaPhoto, '_blank')} className="text-xs text-[#FF6B35] hover:underline mt-1">Ver</button>
+              <div className="border border-gray-200 rounded-xl p-3 text-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => openImageViewer(mandadito.licenciaPhoto, 'Licencia de conducir')}>
+                <FiCamera className="text-3xl text-green-500 mx-auto mb-2" />
+                <p className="text-sm font-medium text-gray-700">Licencia</p>
+                <p className="text-xs text-gray-400 mt-1">Haz clic para ver</p>
               </div>
             )}
           </div>
@@ -288,6 +332,39 @@ const MandaditoProfile = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL para ver imágenes */}
+      {showImageModal && selectedImage && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowImageModal(false)}>
+          <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setShowImageModal(false)} 
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors p-2"
+            >
+              <FiX className="text-3xl" />
+            </button>
+            <div className="bg-white rounded-2xl overflow-hidden">
+              <div className="bg-gray-800 px-6 py-3">
+                <h3 className="text-white font-semibold">{selectedImageTitle}</h3>
+              </div>
+              <div className="p-4 flex justify-center items-center bg-black/50" style={{ minHeight: '400px' }}>
+                <img 
+                  src={selectedImage} 
+                  alt={selectedImageTitle} 
+                  className="max-w-full max-h-[70vh] object-contain"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'https://via.placeholder.com/500?text=Error+al+cargar+imagen';
+                  }}
+                />
+              </div>
+              <div className="bg-gray-100 px-6 py-3 text-center">
+                <p className="text-sm text-gray-600">Haz clic fuera de la imagen para cerrar</p>
+              </div>
             </div>
           </div>
         </div>
