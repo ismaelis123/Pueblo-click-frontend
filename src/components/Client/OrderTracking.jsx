@@ -1,19 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiMapPin, FiNavigation, FiClock, FiCompass, FiMap, FiUser, FiTarget, FiAlertCircle } from 'react-icons/fi';
+import { FiArrowLeft, FiMapPin, FiNavigation, FiClock, FiCompass, FiMap, FiUser, FiTarget, FiLoader } from 'react-icons/fi';
 import api from '../../services/api';
 import { useSocket } from '../../hooks/useSocket';
 import LoadingSpinner from '../Common/LoadingSpinner';
 import toast from 'react-hot-toast';
 import Background from '../Layout/Background';
-
-// Función para cargar Leaflet dinámicamente
-const loadLeaflet = () => {
-  return Promise.all([
-    import('leaflet'),
-    import('leaflet/dist/leaflet.css')
-  ]).then(([L]) => L);
-};
 
 const OrderTracking = () => {
   const { orderId } = useParams();
@@ -22,28 +14,24 @@ const OrderTracking = () => {
   const [order, setOrder] = useState(null);
   const [mandaditoLocation, setMandaditoLocation] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [mapLoading, setMapLoading] = useState(true);
   const [mapError, setMapError] = useState(null);
   const [updating, setUpdating] = useState(false);
   const [distance, setDistance] = useState(null);
   const [eta, setEta] = useState(null);
-  const [L, setL] = useState(null);
   const mapRef = useRef(null);
-  const mapContainerRef = useRef(null);
-  const markersRef = useRef({});
-  const polylineRef = useRef(null);
-
-  // Cargar Leaflet
-  useEffect(() => {
-    loadLeaflet().then(leaflet => {
-      setL(leaflet);
-    }).catch(err => {
-      console.error('Error cargando Leaflet:', err);
-      setMapError('Error al cargar el mapa');
-    });
-  }, []);
+  const markerRef = useRef(null);
+  const destinationMarkerRef = useRef(null);
+  const directionsRendererRef = useRef(null);
+  const watchIdRef = useRef(null);
 
   useEffect(() => {
     fetchOrder();
+    return () => {
+      if (watchIdRef.current) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
   }, [orderId]);
 
   useEffect(() => {
@@ -54,10 +42,10 @@ const OrderTracking = () => {
   }, [socket]);
 
   useEffect(() => {
-    if (L && mapContainerRef.current && (order?.deliveryLocation || mandaditoLocation)) {
-      setTimeout(() => initMap(), 100);
+    if (window.google && window.google.maps && order?.deliveryLocation) {
+      initMap();
     }
-  }, [L, order, mandaditoLocation]);
+  }, [window.google, order, mandaditoLocation]);
 
   const fetchOrder = async () => {
     try {
@@ -83,18 +71,23 @@ const OrderTracking = () => {
       setUpdating(true);
       setTimeout(() => setUpdating(false), 1000);
       
-      // Actualizar marcador en el mapa
-      if (mapRef.current && markersRef.current.mandadito) {
-        markersRef.current.mandadito.setLatLng([data.location.lat, data.location.lng]);
-        const time = new Date().toLocaleTimeString();
-        markersRef.current.mandadito.setPopupContent(`🛵 Mandadito aquí<br><small>Actualizado: ${time}</small>`);
-        mapRef.current.setView([data.location.lat, data.location.lng], 15);
+      if (mapRef.current && markerRef.current) {
+        const pos = { lat: data.location.lat, lng: data.location.lng };
+        markerRef.current.setPosition(pos);
+        mapRef.current.setCenter(pos);
+        mapRef.current.setZoom(15);
         
-        // Actualizar ruta
-        if (order?.deliveryLocation?.lat) {
-          if (polylineRef.current) polylineRef.current.remove();
-          const points = [[data.location.lat, data.location.lng], [order.deliveryLocation.lat, order.deliveryLocation.lng]];
-          polylineRef.current = L.polyline(points, { color: '#FF6B35', weight: 4, opacity: 0.8, dashArray: '5, 10' }).addTo(mapRef.current);
+        if (directionsRendererRef.current && order?.deliveryLocation) {
+          const directionsService = new window.google.maps.DirectionsService();
+          directionsService.route({
+            origin: pos,
+            destination: { lat: order.deliveryLocation.lat, lng: order.deliveryLocation.lng },
+            travelMode: window.google.maps.TravelMode.DRIVING,
+          }, (result, status) => {
+            if (status === 'OK') {
+              directionsRendererRef.current.setDirections(result);
+            }
+          });
         }
       }
     }
@@ -122,79 +115,105 @@ const OrderTracking = () => {
   };
 
   const initMap = () => {
-    if (!mapContainerRef.current || !L) return;
+    if (!window.google || !window.google.maps) {
+      console.log('Google Maps no cargado aún');
+      return;
+    }
+    
+    const mapElement = document.getElementById('tracking-map');
+    if (!mapElement) return;
+    
+    setMapLoading(true);
+    setMapError(null);
     
     try {
-      // Configurar íconos de Leaflet
-      delete L.Icon.Default.prototype._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-      });
-
-      // Ícono personalizado para mandadito
-      const mandaditoIcon = new L.Icon({
-        iconUrl: 'https://cdn-icons-png.flaticon.com/512/1998/1998627.png',
-        iconRetinaUrl: 'https://cdn-icons-png.flaticon.com/512/1998/1998627.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-        popupAnchor: [0, -32],
-      });
-
-      // Ícono para destino
-      const destinationIcon = new L.Icon({
-        iconUrl: 'https://cdn-icons-png.flaticon.com/512/190/190411.png',
-        iconRetinaUrl: 'https://cdn-icons-png.flaticon.com/512/190/190411.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-        popupAnchor: [0, -32],
-      });
-
-      // Centro del mapa
-      let center = [12.106, -85.364];
-      if (mandaditoLocation) center = [mandaditoLocation.lat, mandaditoLocation.lng];
-      else if (order?.deliveryLocation?.lat) center = [order.deliveryLocation.lat, order.deliveryLocation.lng];
+      let center = { lat: 12.106, lng: -85.364 };
+      if (mandaditoLocation) center = { lat: mandaditoLocation.lat, lng: mandaditoLocation.lng };
+      else if (order?.deliveryLocation) center = { lat: order.deliveryLocation.lat, lng: order.deliveryLocation.lng };
       
-      mapRef.current = L.map(mapContainerRef.current).setView(center, 13);
-      
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        subdomains: 'abcd',
-        maxZoom: 19,
-      }).addTo(mapRef.current);
+      mapRef.current = new window.google.maps.Map(mapElement, {
+        center: center,
+        zoom: 13,
+        zoomControl: true,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: true,
+        styles: [
+          { elementType: 'geometry', stylers: [{ color: '#f5f5f5' }] },
+          { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+          { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#c9e3f5' }] },
+          { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+          { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#e0e0e0' }] }
+        ]
+      });
       
       // Marcador de destino
-      if (order?.deliveryLocation?.lat) {
-        markersRef.current.delivery = L.marker([order.deliveryLocation.lat, order.deliveryLocation.lng], { icon: destinationIcon })
-          .addTo(mapRef.current)
-          .bindPopup('🏠 Destino');
+      if (order?.deliveryLocation) {
+        const destinationPos = { lat: order.deliveryLocation.lat, lng: order.deliveryLocation.lng };
+        destinationMarkerRef.current = new window.google.maps.Marker({
+          position: destinationPos,
+          map: mapRef.current,
+          title: 'Destino',
+          icon: {
+            url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
+            scaledSize: new window.google.maps.Size(40, 40)
+          }
+        });
       }
       
       // Marcador de mandadito
-      if (mandaditoLocation?.lat) {
-        const popupContent = mandaditoLocation.lastUpdate 
-          ? `🛵 Mandadito aquí<br><small>Actualizado: ${new Date(mandaditoLocation.lastUpdate).toLocaleTimeString()}</small>`
-          : '🛵 Mandadito aquí';
-        markersRef.current.mandadito = L.marker([mandaditoLocation.lat, mandaditoLocation.lng], { icon: mandaditoIcon })
-          .addTo(mapRef.current)
-          .bindPopup(popupContent);
+      if (mandaditoLocation) {
+        const mandaditoPos = { lat: mandaditoLocation.lat, lng: mandaditoLocation.lng };
+        markerRef.current = new window.google.maps.Marker({
+          position: mandaditoPos,
+          map: mapRef.current,
+          title: 'Mandadito',
+          icon: {
+            url: 'https://cdn-icons-png.flaticon.com/512/1998/1998627.png',
+            scaledSize: new window.google.maps.Size(40, 40)
+          }
+        });
       }
       
-      // Dibujar ruta
-      if (mandaditoLocation?.lat && order?.deliveryLocation?.lat) {
-        const points = [[mandaditoLocation.lat, mandaditoLocation.lng], [order.deliveryLocation.lat, order.deliveryLocation.lng]];
-        polylineRef.current = L.polyline(points, { color: '#FF6B35', weight: 4, opacity: 0.8, dashArray: '5, 10' }).addTo(mapRef.current);
-        const bounds = L.latLngBounds(points);
-        mapRef.current.fitBounds(bounds, { padding: [50, 50] });
-      }
+      // Calcular ruta
+      const directionsService = new window.google.maps.DirectionsService();
+      directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
+        map: mapRef.current,
+        suppressMarkers: true,
+        polylineOptions: {
+          strokeColor: '#FF6B35',
+          strokeWeight: 5,
+          strokeOpacity: 0.8
+        }
+      });
       
-      setMapError(null);
+      let origin = mandaditoLocation 
+        ? { lat: mandaditoLocation.lat, lng: mandaditoLocation.lng }
+        : (order?.deliveryLocation ? { lat: order.deliveryLocation.lat, lng: order.deliveryLocation.lng } : center);
+      
+      const destination = order?.deliveryLocation 
+        ? { lat: order.deliveryLocation.lat, lng: order.deliveryLocation.lng }
+        : center;
+      
+      directionsService.route({
+        origin: origin,
+        destination: destination,
+        travelMode: window.google.maps.TravelMode.DRIVING,
+      }, (result, status) => {
+        if (status === 'OK') {
+          directionsRendererRef.current.setDirections(result);
+          setMapLoading(false);
+        } else {
+          console.error('Error al calcular ruta:', status);
+          setMapError('No se pudo calcular la ruta');
+          setMapLoading(false);
+        }
+      });
+      
     } catch (err) {
       console.error('Error inicializando mapa:', err);
-      setMapError('Error al inicializar el mapa');
+      setMapError('Error al cargar el mapa');
+      setMapLoading(false);
     }
   };
 
@@ -215,6 +234,7 @@ const OrderTracking = () => {
   return (
     <Background>
       <div className="container mx-auto py-4 px-4 pb-24 md:pb-8">
+        {/* Header */}
         <div className="flex items-center gap-3 mb-4">
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
             <FiArrowLeft className="text-xl" />
@@ -244,7 +264,7 @@ const OrderTracking = () => {
           </div>
 
           {isTracking && (
-            <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100">
+            <div className="flex flex-wrap items-center gap-4 mt-3 pt-3 border-t border-gray-100">
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${updating ? 'bg-green-500 animate-pulse' : 'bg-green-500'}`} />
                 <span className="text-xs text-gray-500">
@@ -267,24 +287,35 @@ const OrderTracking = () => {
 
         {/* Mapa */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-4">
-          {mapError ? (
-            <div className="h-[400px] flex flex-col items-center justify-center bg-gray-100">
-              <FiAlertCircle className="text-4xl text-red-400 mb-3" />
-              <p className="text-gray-500 text-center">{mapError}</p>
-              <button 
-                onClick={() => window.location.reload()} 
-                className="mt-4 btn-primary py-2 px-4 text-sm"
-              >
-                Reintentar
-              </button>
-            </div>
-          ) : (
-            <div ref={mapContainerRef} style={{ height: '400px', width: '100%' }} />
-          )}
-          <div className="p-3 bg-gray-50 flex justify-center gap-4 text-xs text-gray-500 border-t">
+          <div className="relative" style={{ height: '400px', width: '100%' }}>
+            {mapLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+                <div className="text-center">
+                  <FiLoader className="text-3xl text-[#FF6B35] animate-spin mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">Cargando mapa...</p>
+                </div>
+              </div>
+            )}
+            {mapError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+                <div className="text-center px-4">
+                  <FiMap className="text-4xl text-red-400 mx-auto mb-2" />
+                  <p className="text-gray-600 text-sm">{mapError}</p>
+                  <button 
+                    onClick={() => window.location.reload()} 
+                    className="mt-3 bg-[#FF6B35] text-white px-4 py-2 rounded-xl text-sm"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              </div>
+            )}
+            <div id="tracking-map" style={{ height: '100%', width: '100%' }} />
+          </div>
+          <div className="p-3 bg-gray-50 flex flex-wrap justify-center gap-4 text-xs text-gray-500 border-t">
             <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-[#FF6B35]" /><span>Ruta</span></div>
             <div className="flex items-center gap-1"><img src="https://cdn-icons-png.flaticon.com/512/1998/1998627.png" className="w-4 h-4" alt="" /><span>Mandadito</span></div>
-            <div className="flex items-center gap-1"><img src="https://cdn-icons-png.flaticon.com/512/190/190411.png" className="w-4 h-4" alt="" /><span>Destino</span></div>
+            <div className="flex items-center gap-1"><div className="w-4 h-4 rounded-full bg-red-500" /><span>Destino</span></div>
           </div>
         </div>
 
@@ -295,17 +326,17 @@ const OrderTracking = () => {
           </h3>
           <div className="space-y-3">
             <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">📍</div>
-              <div>
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 text-sm">📍</div>
+              <div className="flex-1">
                 <p className="text-xs text-gray-500">Punto de recogida</p>
-                <p className="text-sm text-gray-700">{order?.pickupAddress}</p>
+                <p className="text-sm text-gray-700 break-words">{order?.pickupAddress}</p>
               </div>
             </div>
             <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">🏠</div>
-              <div>
+              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 text-sm">🏠</div>
+              <div className="flex-1">
                 <p className="text-xs text-gray-500">Destino</p>
-                <p className="text-sm text-gray-700">{order?.deliveryAddress}</p>
+                <p className="text-sm text-gray-700 break-words">{order?.deliveryAddress}</p>
               </div>
             </div>
           </div>
@@ -313,7 +344,10 @@ const OrderTracking = () => {
 
         {/* Acciones */}
         {order?.deliveryLocation && (
-          <button onClick={openInGoogleMaps} className="w-full bg-[#FF6B35] text-white py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-[#e55a2b] transition-colors">
+          <button 
+            onClick={openInGoogleMaps} 
+            className="w-full bg-[#FF6B35] text-white py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-[#e55a2b] transition-colors"
+          >
             <FiMap /> Abrir en Google Maps
           </button>
         )}

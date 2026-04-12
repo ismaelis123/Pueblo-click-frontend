@@ -12,9 +12,8 @@ const PermissionManager = () => {
   useEffect(() => {
     setPermissions({ notifications: permission === 'granted', location: false });
     
-    // Verificar ubicación automáticamente
-    if (user?.role === 'mandadito' && navigator.geolocation) {
-      navigator.permissions?.query({ name: 'geolocation' }).then(result => {
+    if (user?.role === 'mandadito' && navigator.permissions) {
+      navigator.permissions.query({ name: 'geolocation' }).then(result => {
         setPermissions(prev => ({ ...prev, location: result.state === 'granted' }));
       });
     }
@@ -49,14 +48,10 @@ const PermissionManager = () => {
             <p className="text-sm text-gray-500 mt-1">Para una mejor experiencia, necesitamos algunos permisos:</p>
             <ul className="text-xs text-gray-500 mt-2 space-y-1">
               {!permissions.notifications && (
-                <li className="flex items-center gap-2">
-                  <FiBell className="text-[#FF6B35]" /> Notificaciones - Recibir alertas
-                </li>
+                <li className="flex items-center gap-2"><FiBell className="text-[#FF6B35]" /> Notificaciones - Recibir alertas</li>
               )}
               {user?.role === 'mandadito' && !permissions.location && (
-                <li className="flex items-center gap-2">
-                  <FiMapPin className="text-[#FF6B35]" /> Ubicación - Compartir tu ruta
-                </li>
+                <li className="flex items-center gap-2"><FiMapPin className="text-[#FF6B35]" /> Ubicación - Compartir tu ruta</li>
               )}
             </ul>
             <div className="flex gap-2 mt-3">

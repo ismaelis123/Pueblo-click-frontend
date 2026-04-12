@@ -7,15 +7,13 @@ export const useGeolocation = (options = {}) => {
   const [permission, setPermission] = useState('prompt');
 
   useEffect(() => {
-    // Verificar si el navegador soporta geolocalización
     if (!navigator.geolocation) {
-      setError('Geolocalización no soportada por tu navegador');
+      setError('Geolocalización no soportada');
       setLoading(false);
       setPermission('unsupported');
       return;
     }
 
-    // Verificar el estado del permiso
     if (navigator.permissions && navigator.permissions.query) {
       navigator.permissions.query({ name: 'geolocation' }).then((result) => {
         setPermission(result.state);
@@ -35,29 +33,19 @@ export const useGeolocation = (options = {}) => {
     };
 
     const errorHandler = (err) => {
-      console.error('Error de geolocalización:', err);
       let errorMessage = 'Error al obtener ubicación';
-      
-      switch(err.code) {
-        case err.PERMISSION_DENIED:
-          errorMessage = 'Permiso denegado. Activa la ubicación en tu navegador.';
-          setPermission('denied');
-          break;
-        case err.POSITION_UNAVAILABLE:
-          errorMessage = 'Información de ubicación no disponible.';
-          break;
-        case err.TIMEOUT:
-          errorMessage = 'Tiempo de espera agotado.';
-          break;
-        default:
-          errorMessage = err.message;
+      if (err.code === err.PERMISSION_DENIED) {
+        errorMessage = 'Permiso denegado. Activa la ubicación.';
+        setPermission('denied');
+      } else if (err.code === err.POSITION_UNAVAILABLE) {
+        errorMessage = 'Ubicación no disponible.';
+      } else if (err.code === err.TIMEOUT) {
+        errorMessage = 'Tiempo de espera agotado.';
       }
-      
       setError(errorMessage);
       setLoading(false);
     };
 
-    // Solicitar ubicación
     const watchId = navigator.geolocation.watchPosition(success, errorHandler, {
       enableHighAccuracy: true,
       timeout: 15000,
@@ -65,9 +53,7 @@ export const useGeolocation = (options = {}) => {
       ...options
     });
 
-    return () => {
-      navigator.geolocation.clearWatch(watchId);
-    };
+    return () => navigator.geolocation.clearWatch(watchId);
   }, [options.enableHighAccuracy, options.timeout]);
 
   const requestPermission = () => {
@@ -84,7 +70,7 @@ export const useGeolocation = (options = {}) => {
         setPermission('granted');
       },
       (err) => {
-        setError('Permiso denegado. Activa la ubicación para compartir tu ruta.');
+        setError('Permiso denegado');
         setPermission('denied');
         setLoading(false);
       },
