@@ -19,11 +19,14 @@ const ShareLocation = () => {
 
   useEffect(() => { 
     fetchOrder();
-    if (permission === 'prompt') requestPermission();
+    if (permission === 'prompt') {
+      requestPermission();
+    }
   }, []);
 
   useEffect(() => {
     if (!socket || !isConnected) return;
+    
     if (location && sharing) {
       const interval = setInterval(() => {
         console.log('📍 Enviando ubicación:', location);
@@ -33,6 +36,7 @@ const ShareLocation = () => {
         });
         setLastUpdate(new Date());
       }, 5000);
+      
       return () => clearInterval(interval);
     }
   }, [socket, isConnected, location, sharing, orderId]);
@@ -42,7 +46,9 @@ const ShareLocation = () => {
       const response = await api.get('/mandadito/orders');
       const found = response.data.find(o => o._id === orderId);
       setOrder(found);
-    } catch (error) { console.error('Error fetching order'); }
+    } catch (error) {
+      console.error('Error fetching order');
+    }
   };
 
   const toggleSharing = async () => {
@@ -51,17 +57,23 @@ const ShareLocation = () => {
       toast.info('Primero activa tu ubicación');
       return;
     }
+    
     setSending(true);
     try {
       const response = await api.put('/mandadito/share-location/toggle');
       setSharing(response.data.isSharingLocation);
       toast.success(response.data.message);
-    } catch (error) { toast.error('Error al cambiar estado'); }
-    finally { setSending(false); }
+    } catch (error) {
+      toast.error('Error al cambiar estado');
+    } finally {
+      setSending(false);
+    }
   };
 
   const openInMaps = () => {
-    if (location) window.open(`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}`, '_blank');
+    if (location) {
+      window.open(`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}`, '_blank');
+    }
   };
 
   return (
@@ -73,7 +85,9 @@ const ShareLocation = () => {
           </div>
           
           <h1 className="text-xl font-bold text-gray-800 mb-2">Compartir Ubicación</h1>
-          <p className="text-gray-500 text-sm mb-6">Activa el seguimiento para que el cliente pueda ver tu recorrido en tiempo real.</p>
+          <p className="text-gray-500 text-sm mb-6">
+            Activa el seguimiento para que el cliente pueda ver tu recorrido en tiempo real.
+          </p>
 
           <div className="bg-gray-50 rounded-xl p-4 mb-6">
             {permission === 'denied' ? (
@@ -83,21 +97,47 @@ const ShareLocation = () => {
                 <p className="text-xs text-gray-500 mt-1">Activa la ubicación en la configuración de tu navegador</p>
               </div>
             ) : locationLoading ? (
-              <div className="flex items-center justify-center gap-2 text-gray-500"><FiLoader className="animate-spin" /> Obteniendo ubicación...</div>
+              <div className="flex items-center justify-center gap-2 text-gray-500">
+                <FiLoader className="animate-spin" /> Obteniendo ubicación...
+              </div>
             ) : error ? (
-              <div className="text-red-500 text-sm"><p>Error: {error}</p><button onClick={requestPermission} className="text-[#FF6B35] underline mt-1">Reintentar</button></div>
+              <div className="text-red-500 text-sm">
+                <p>Error: {error}</p>
+                <button onClick={requestPermission} className="text-[#FF6B35] underline mt-1">Reintentar</button>
+              </div>
             ) : location ? (
               <div>
                 <p className="text-sm text-gray-600 mb-2">📍 Ubicación actual</p>
-                <p className="text-xs text-gray-400 font-mono">Lat: {location.lat.toFixed(6)}<br />Lng: {location.lng.toFixed(6)}<br />Precisión: ±{Math.round(location.accuracy)}m</p>
-                {lastUpdate && <p className="text-xs text-gray-400 mt-2">Última actualización: {lastUpdate.toLocaleTimeString()}</p>}
+                <p className="text-xs text-gray-400 font-mono">
+                  Lat: {location.lat.toFixed(6)}<br />
+                  Lng: {location.lng.toFixed(6)}<br />
+                  Precisión: ±{Math.round(location.accuracy)}m
+                </p>
+                {lastUpdate && (
+                  <p className="text-xs text-gray-400 mt-2">
+                    Última actualización: {lastUpdate.toLocaleTimeString()}
+                  </p>
+                )}
               </div>
             ) : (
-              <div className="text-center"><p className="text-gray-500 text-sm">Esperando ubicación...</p><button onClick={requestPermission} className="mt-2 text-[#FF6B35] text-sm underline">Solicitar permiso</button></div>
+              <div className="text-center">
+                <p className="text-gray-500 text-sm">Esperando ubicación...</p>
+                <button onClick={requestPermission} className="mt-2 text-[#FF6B35] text-sm underline">Solicitar permiso</button>
+              </div>
             )}
           </div>
 
-          <button onClick={toggleSharing} disabled={sending || permission !== 'granted'} className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 font-semibold transition-colors ${sharing && permission === 'granted' ? 'bg-green-500 text-white hover:bg-green-600' : permission === 'granted' ? 'bg-[#FF6B35] text-white hover:bg-[#e55a2b]' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}>
+          <button
+            onClick={toggleSharing}
+            disabled={sending || permission !== 'granted'}
+            className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 font-semibold transition-colors ${
+              sharing && permission === 'granted'
+                ? 'bg-green-500 text-white hover:bg-green-600'
+                : permission === 'granted'
+                  ? 'bg-[#FF6B35] text-white hover:bg-[#e55a2b]'
+                  : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+            }`}
+          >
             {sending ? <FiLoader className="animate-spin" /> : sharing ? <FiCheck /> : <FiShare />}
             {sharing ? 'Compartiendo ubicación' : permission === 'granted' ? 'Activar seguimiento' : 'Permiso requerido'}
           </button>
@@ -116,12 +156,15 @@ const ShareLocation = () => {
           {order && (
             <div className="mt-4 p-3 bg-blue-50 rounded-xl">
               <p className="text-xs text-blue-700 flex items-center justify-center gap-1">
-                <FiTarget className="text-xs" /> Destino: {order.deliveryAddress?.substring(0, 40)}...
+                <FiTarget className="text-xs" />
+                Destino: {order.deliveryAddress?.substring(0, 40)}...
               </p>
             </div>
           )}
         </div>
-        <button onClick={() => navigate('/mandadito/orders')} className="mt-4 text-gray-400 text-sm hover:text-gray-600">← Volver a mis órdenes</button>
+        <button onClick={() => navigate('/mandadito/orders')} className="mt-4 text-gray-400 text-sm hover:text-gray-600">
+          ← Volver a mis órdenes
+        </button>
       </div>
     </Background>
   );

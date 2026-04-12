@@ -12,7 +12,7 @@ export const useSocket = () => {
   useEffect(() => {
     if (!user || !token) return;
 
-    const socketInstance = io(import.meta.env.VITE_SOCKET_URL || 'https://pueblo-click-backend.onrender.com', {
+    const socketInstance = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', {
       transports: ['websocket'],
       auth: { token },
     });
