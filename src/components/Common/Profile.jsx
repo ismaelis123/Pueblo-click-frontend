@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiStar, FiUser, FiCreditCard, FiClock, FiMapPin } from 'react-icons/fi';
+import { FiStar, FiUser, FiCreditCard, FiClock } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import Background from '../Layout/Background';
 
@@ -20,7 +20,11 @@ const Profile = () => {
                 <div className="w-24 h-24 rounded-full bg-white p-1 shadow-lg">
                   <div className="w-full h-full rounded-full bg-gradient-to-br from-[#FF6B35]/20 to-[#4361EE]/20 flex items-center justify-center overflow-hidden">
                     {user?.profilePhoto ? (
-                      <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
+                      <img 
+                        src={user.profilePhoto} 
+                        alt={user.name} 
+                        className="w-full h-full object-cover" 
+                      />
                     ) : (
                       <FiUser className="text-4xl text-[#FF6B35]" />
                     )}
@@ -29,8 +33,8 @@ const Profile = () => {
               </div>
               
               <div className="text-center">
-                <h2 className="text-xl font-bold text-gray-800">{user?.name}</h2>
-                <p className="text-gray-500">{user?.phone}</p>
+                <h2 className="text-xl font-bold text-gray-800">{user?.name || 'Usuario'}</h2>
+                <p className="text-gray-500">{user?.phone || 'Sin teléfono'}</p>
                 <p className="text-sm text-gray-400 mt-1">
                   Rol: {user?.role === 'client' ? 'Cliente' : user?.role === 'mandadito' ? 'Mandadito' : 'Administrador'}
                 </p>
@@ -48,7 +52,9 @@ const Profile = () => {
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">Crédito disponible</p>
-                        <p className="font-bold text-[#FF6B35] text-lg">C${user?.credit || 0}</p>
+                        <p className="font-bold text-[#FF6B35] text-lg">
+                          C${user?.credit || 0}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -69,23 +75,29 @@ const Profile = () => {
                     </div>
                   )}
                   
-                  {user?.isVerified && (
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
-                        <FiMapPin className="text-green-600 text-xl" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Estado de verificación</p>
-                        <p className="text-sm text-green-600 font-medium">✅ Verificado</p>
-                      </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+                      <div className={`w-3 h-3 rounded-full ${user?.isVerified ? 'bg-green-500' : 'bg-yellow-500'}`} />
                     </div>
-                  )}
+                    <div>
+                      <p className="text-sm text-gray-500">Estado de verificación</p>
+                      <p className={`text-sm font-medium ${user?.isVerified ? 'text-green-600' : 'text-yellow-600'}`}>
+                        {user?.isVerified ? '✅ Verificado' : '⏳ Pendiente de verificación'}
+                      </p>
+                    </div>
+                  </div>
                 </>
               )}
               
               {user?.role === 'client' && (
                 <div className="flex items-center justify-center text-gray-500">
-                  <p>Cliente desde {new Date(user?.createdAt).toLocaleDateString()}</p>
+                  <p>Cliente desde {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'recientemente'}</p>
+                </div>
+              )}
+              
+              {user?.role === 'admin' && (
+                <div className="flex items-center justify-center text-gray-500">
+                  <p>Panel de Administración</p>
                 </div>
               )}
               
@@ -99,7 +111,9 @@ const Profile = () => {
                         className={i < Math.round(user.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'} 
                       />
                     ))}
-                    <span className="text-sm text-gray-500 ml-2">({user.totalRatings || 0})</span>
+                    <span className="text-sm text-gray-500 ml-2">
+                      ({user.totalRatings || 0})
+                    </span>
                   </div>
                 </div>
               )}
