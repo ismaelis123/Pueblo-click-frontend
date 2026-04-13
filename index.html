@@ -21,11 +21,23 @@
     
     <title>Pueblo Click | Mandaditos en Juigalpa</title>
     
-    <!-- Google Maps API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAeApfkxb_c9C-L7B1LudqGYqOWeE1f2UY&libraries=places,geometry&v=weekly&loading=async" async defer></script>
-    
+    <!-- Precargar conexiones -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://maps.googleapis.com">
+    
+    <!-- Google Maps API - CORREGIDO con loading=async -->
+    <script>
+      window.initMap = function() {
+        console.log('✅ Google Maps API cargada');
+        window.dispatchEvent(new Event('google-maps-loaded'));
+      };
+    </script>
+    <script 
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAeApfkxb_c9C-L7B1LudqGYqOWeE1f2UY&libraries=places,geometry&callback=initMap&loading=async" 
+      async
+    ></script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   </head>
   <body>

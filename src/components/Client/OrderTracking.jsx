@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiMapPin, FiNavigation, FiClock, FiCompass, FiMap, FiUser, FiTarget, FiLoader } from 'react-icons/fi';
+import { FiArrowLeft, FiMapPin, FiClock, FiCompass, FiMap, FiUser, FiTarget, FiLoader, FiRefreshCw } from 'react-icons/fi';
 import api from '../../services/api';
 import { useSocket } from '../../hooks/useSocket';
 import LoadingSpinner from '../Common/LoadingSpinner';
@@ -19,119 +19,23 @@ const OrderTracking = () => {
   const [updating, setUpdating] = useState(false);
   const [distance, setDistance] = useState(null);
   const [eta, setEta] = useState(null);
-  const [mapInitialized, setMapInitialized] = useState(false);
   
   const mapRef = useRef(null);
   const markerRef = useRef(null);
   const destinationMarkerRef = useRef(null);
   const directionsRendererRef = useRef(null);
+  const mapContainerRef = useRef(null);
 
-  // Detectar cuando Google Maps está listo
-  useEffect(() => {
-    const checkGoogleMaps = setInterval(() => {
-      if (window.google && window.google.maps && !mapInitialized) {
-        console.log('✅ Google Maps detectado, inicializando...');
-        clearInterval(checkGoogleMaps);
-        initMap();
-      }
-    }, 500);
-    
-    return () => clearInterval(checkGoogleMaps);
-  }, [mapInitialized]);
-
-  // Cargar orden
-  useEffect(() => {
-    fetchOrder();
-  }, [orderId]);
-
-  // Escuchar actualizaciones de ubicación
-  useEffect(() => {
-    if (socket) {
-      socket.on('locationUpdate', handleLocationUpdate);
-      return () => socket.off('locationUpdate');
-    }
-  }, [socket]);
-
-  const fetchOrder = async () => {
-    try {
-      const response = await api.get('/client/orders');
-      const found = response.data.find(o => o._id === orderId);
-      setOrder(found);
-      if (found.mandadito?.currentLocation) {
-        setMandaditoLocation(found.mandadito.currentLocation);
-      }
-    } catch (error) {
-      toast.error('Error al cargar la orden');
-      navigate('/client/orders');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLocationUpdate = (data) => {
-    if (data.orderId === orderId && data.location) {
-      console.log('📍 Nueva ubicación recibida:', data.location);
-      setMandaditoLocation(data.location);
-      calculateDistance(data.location);
-      setUpdating(true);
-      setTimeout(() => setUpdating(false), 1000);
-
-      if (mapRef.current && markerRef.current) {
-        const pos = { lat: data.location.lat, lng: data.location.lng };
-        markerRef.current.setPosition(pos);
-        mapRef.current.setCenter(pos);
-        mapRef.current.setZoom(15);
-
-        if (directionsRendererRef.current && order?.deliveryLocation) {
-          const directionsService = new window.google.maps.DirectionsService();
-          directionsService.route({
-            origin: pos,
-            destination: { lat: order.deliveryLocation.lat, lng: order.deliveryLocation.lng },
-            travelMode: window.google.maps.TravelMode.DRIVING,
-          }, (result, status) => {
-            if (status === 'OK') {
-              directionsRendererRef.current.setDirections(result);
-            }
-          });
-        }
-      }
-    }
-  };
-
-  const calculateDistance = (currentLoc) => {
-    if (!order?.deliveryLocation?.lat) return;
-
-    const R = 6371;
-    const lat1 = currentLoc.lat * Math.PI / 180;
-    const lat2 = order.deliveryLocation.lat * Math.PI / 180;
-    const deltaLat = (order.deliveryLocation.lat - currentLoc.lat) * Math.PI / 180;
-    const deltaLng = (order.deliveryLocation.lng - currentLoc.lng) * Math.PI / 180;
-
-    const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-              Math.cos(lat1) * Math.cos(lat2) *
-              Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distanceKm = R * c;
-
-    setDistance(distanceKm);
-    const speedKmh = 20;
-    const timeMinutes = Math.round((distanceKm / speedKmh) * 60);
-    setEta(timeMinutes);
-  };
-
-  const initMap = () => {
-    const mapElement = document.getElementById('tracking-map');
-    if (!mapElement) {
-      console.log('❌ Elemento del mapa no encontrado');
-      setMapError('No se encontró el contenedor del mapa.');
-      setMapLoading(false);
+  // Función para inicializar el mapa
+  const initMap = useCallback(() => {
+    if (!mapContainerRef.current) {
+      console.log('❌ Contenedor del mapa no encontrado');
       return;
     }
 
     if (!window.google || !window.google.maps) {
       console.log('⏳ Google Maps no cargado aún');
-      setMapError('Google Maps no está listo. Recarga la página.');
-      setMapLoading(false);
+      setMapError('Google Maps no está listo. Esperando...');
       return;
     }
 
@@ -139,19 +43,17 @@ const OrderTracking = () => {
     setMapError(null);
 
     try {
-      // Coordenadas de Juigalpa (centro)
-      let center = { lat: 12.106, lng: -85.364 };
+      let center = { lat: 12.106, lng: -85.364 }; // Juigalpa
       
-      // Si hay ubicación del mandadito, centrar ahí
       if (mandaditoLocation && mandaditoLocation.lat) {
         center = { lat: mandaditoLocation.lat, lng: mandaditoLocation.lng };
       } else if (order?.deliveryLocation?.lat) {
         center = { lat: order.deliveryLocation.lat, lng: order.deliveryLocation.lng };
       }
 
-      mapRef.current = new window.google.maps.Map(mapElement, {
+      mapRef.current = new window.google.maps.Map(mapContainerRef.current, {
         center: center,
-        zoom: 13,
+        zoom: 14,
         zoomControl: true,
         mapTypeControl: false,
         streetViewControl: false,
@@ -165,7 +67,7 @@ const OrderTracking = () => {
         ],
       });
 
-      // Marcador de destino (si existe)
+      // Marcador de destino
       if (order?.deliveryLocation?.lat && order?.deliveryLocation?.lng) {
         const destinationPos = { lat: order.deliveryLocation.lat, lng: order.deliveryLocation.lng };
         destinationMarkerRef.current = new window.google.maps.Marker({
@@ -179,7 +81,20 @@ const OrderTracking = () => {
         });
       }
 
-      // Marcador de mandadito (si existe)
+      // Marcador de recogida
+      if (order?.pickupLocation?.lat && order?.pickupLocation?.lng) {
+        new window.google.maps.Marker({
+          position: { lat: order.pickupLocation.lat, lng: order.pickupLocation.lng },
+          map: mapRef.current,
+          title: 'Recogida',
+          icon: {
+            url: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
+            scaledSize: new window.google.maps.Size(40, 40),
+          },
+        });
+      }
+
+      // Marcador del mandadito
       if (mandaditoLocation?.lat && mandaditoLocation?.lng) {
         const mandaditoPos = { lat: mandaditoLocation.lat, lng: mandaditoLocation.lng };
         markerRef.current = new window.google.maps.Marker({
@@ -193,7 +108,7 @@ const OrderTracking = () => {
         });
       }
 
-      // Si hay ambos puntos (mandadito y destino), calcular ruta
+      // Si hay ambos puntos, calcular ruta
       if (mandaditoLocation?.lat && order?.deliveryLocation?.lat) {
         const directionsService = new window.google.maps.DirectionsService();
         directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
@@ -216,6 +131,11 @@ const OrderTracking = () => {
             setMapLoading(false);
             if (status === 'OK') {
               directionsRendererRef.current.setDirections(result);
+              const route = result.routes[0];
+              if (route && route.legs[0]) {
+                setDistance(route.legs[0].distance.value / 1000);
+                setEta(Math.round(route.legs[0].duration.value / 60));
+              }
             } else {
               console.error('Error al calcular ruta:', status);
             }
@@ -225,12 +145,122 @@ const OrderTracking = () => {
         setMapLoading(false);
       }
 
-      setMapInitialized(true);
       console.log('✅ Mapa inicializado correctamente');
     } catch (err) {
       console.error('Error inicializando mapa:', err);
-      setMapError('Error al cargar el mapa. Recarga la página.');
+      setMapError('Error al cargar el mapa. Intenta recargar.');
       setMapLoading(false);
+    }
+  }, [mandaditoLocation, order]);
+
+  // Efecto para cargar la orden
+  useEffect(() => {
+    fetchOrder();
+  }, [orderId]);
+
+  // Efecto para inicializar el mapa cuando los datos estén listos
+  useEffect(() => {
+    if (!loading && !mapRef.current) {
+      // Esperar a que Google Maps esté disponible
+      const checkGoogleMaps = setInterval(() => {
+        if (window.google && window.google.maps) {
+          clearInterval(checkGoogleMaps);
+          initMap();
+        }
+      }, 300);
+      
+      return () => clearInterval(checkGoogleMaps);
+    }
+  }, [loading, initMap]);
+
+  // Efecto para actualizar el mapa cuando cambia la ubicación
+  useEffect(() => {
+    if (mapRef.current && mandaditoLocation?.lat) {
+      const pos = { lat: mandaditoLocation.lat, lng: mandaditoLocation.lng };
+      
+      if (markerRef.current) {
+        markerRef.current.setPosition(pos);
+      } else {
+        markerRef.current = new window.google.maps.Marker({
+          position: pos,
+          map: mapRef.current,
+          title: 'Mandadito',
+          icon: {
+            url: 'https://cdn-icons-png.flaticon.com/512/1998/1998627.png',
+            scaledSize: new window.google.maps.Size(40, 40),
+          },
+        });
+      }
+      
+      mapRef.current.setCenter(pos);
+      
+      // Actualizar ruta
+      if (order?.deliveryLocation?.lat && directionsRendererRef.current) {
+        const directionsService = new window.google.maps.DirectionsService();
+        directionsService.route(
+          {
+            origin: pos,
+            destination: { lat: order.deliveryLocation.lat, lng: order.deliveryLocation.lng },
+            travelMode: window.google.maps.TravelMode.DRIVING,
+          },
+          (result, status) => {
+            if (status === 'OK') {
+              directionsRendererRef.current.setDirections(result);
+              const route = result.routes[0];
+              if (route && route.legs[0]) {
+                setDistance(route.legs[0].distance.value / 1000);
+                setEta(Math.round(route.legs[0].duration.value / 60));
+              }
+            }
+          }
+        );
+      }
+    }
+  }, [mandaditoLocation, order]);
+
+  // Socket para recibir actualizaciones
+  useEffect(() => {
+    if (socket) {
+      socket.on('locationUpdate', handleLocationUpdate);
+      return () => socket.off('locationUpdate');
+    }
+  }, [socket]);
+
+  const fetchOrder = async () => {
+    try {
+      const response = await api.get('/client/orders');
+      const found = response.data.find(o => o._id === orderId);
+      setOrder(found);
+      
+      if (found.mandadito?.currentLocation) {
+        setMandaditoLocation(found.mandadito.currentLocation);
+      }
+      
+      // También obtener ubicación actual del mandadito
+      if (found.mandadito?._id) {
+        try {
+          const locResponse = await api.get(`/client/orders/${orderId}/location`);
+          if (locResponse.data.location) {
+            setMandaditoLocation(locResponse.data.location);
+          }
+        } catch (err) {
+          console.log('Mandadito no está compartiendo ubicación');
+        }
+      }
+    } catch (error) {
+      toast.error('Error al cargar la orden');
+      navigate('/client/orders');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLocationUpdate = (data) => {
+    if (data.orderId === orderId && data.location) {
+      console.log('📍 Nueva ubicación recibida:', data.location);
+      setMandaditoLocation(data.location);
+      setUpdating(true);
+      setTimeout(() => setUpdating(false), 1000);
     }
   };
 
@@ -242,14 +272,28 @@ const OrderTracking = () => {
       const url = `https://www.google.com/maps/dir/?api=1&destination=${order.deliveryLocation.lat},${order.deliveryLocation.lng}&travelmode=driving`;
       window.open(url, '_blank');
     } else {
-      const url = `https://www.google.com/maps/search/?api=1&query=Juigalpa,Chontales`;
-      window.open(url, '_blank');
+      toast.error('No hay ubicación de destino disponible');
+    }
+  };
+
+  const handleRefreshLocation = async () => {
+    try {
+      const response = await api.get(`/client/orders/${orderId}/location`);
+      if (response.data.location) {
+        setMandaditoLocation(response.data.location);
+        toast.success('Ubicación actualizada');
+      } else {
+        toast.error('El mandadito no está compartiendo su ubicación');
+      }
+    } catch (error) {
+      toast.error('No se pudo obtener la ubicación');
     }
   };
 
   if (loading) return <LoadingSpinner />;
 
   const isTracking = order?.status === 'accepted' || order?.status === 'delivered';
+  const isSharing = mandaditoLocation !== null;
 
   return (
     <Background>
@@ -287,11 +331,21 @@ const OrderTracking = () => {
             {isTracking && (
               <div className="flex flex-wrap items-center gap-4 mt-3 pt-3 border-t border-gray-100">
                 <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${updating ? 'bg-green-500 animate-pulse' : 'bg-green-500'}`} />
+                  <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-300'} ${updating ? 'animate-pulse' : ''}`} />
                   <span className="text-xs text-gray-500">
-                    {updating ? 'Actualizando...' : 'Ubicación en tiempo real'}
+                    {isConnected ? (updating ? 'Actualizando...' : 'Conectado') : 'Desconectado'}
                   </span>
                 </div>
+                {!isSharing && (
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={handleRefreshLocation}
+                      className="text-xs text-[#FF6B35] flex items-center gap-1 hover:underline"
+                    >
+                      <FiRefreshCw className="text-xs" /> Actualizar ubicación
+                    </button>
+                  </div>
+                )}
                 {distance !== null && (
                   <div className="flex items-center gap-2 text-xs text-gray-500">
                     <FiCompass className="text-xs" /> {distance.toFixed(1)} km
@@ -324,7 +378,7 @@ const OrderTracking = () => {
                   <FiMap className="text-4xl text-red-400 mx-auto mb-2" />
                   <p className="text-gray-600 text-sm">{mapError}</p>
                   <button
-                    onClick={() => window.location.reload()}
+                    onClick={initMap}
                     className="mt-3 bg-[#FF6B35] text-white px-4 py-2 rounded-xl text-sm"
                   >
                     Reintentar
@@ -332,12 +386,32 @@ const OrderTracking = () => {
                 </div>
               </div>
             )}
-            <div id="tracking-map" style={{ height: '100%', width: '100%' }} />
+            {!isSharing && !mapLoading && !mapError && isTracking && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100/80 z-10">
+                <div className="text-center px-4">
+                  <FiMapPin className="text-4xl text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-600 text-sm font-medium">El mandadito no está compartiendo su ubicación</p>
+                  <p className="text-xs text-gray-400 mt-1">Puedes contactarlo por chat o llamada</p>
+                  <button
+                    onClick={handleRefreshLocation}
+                    className="mt-3 bg-[#FF6B35] text-white px-4 py-2 rounded-xl text-sm flex items-center gap-2 mx-auto"
+                  >
+                    <FiRefreshCw className="text-sm" /> Verificar ubicación
+                  </button>
+                </div>
+              </div>
+            )}
+            <div 
+              ref={mapContainerRef} 
+              id="tracking-map" 
+              style={{ height: '100%', width: '100%' }} 
+            />
           </div>
           <div className="p-3 bg-gray-50 flex flex-wrap justify-center gap-4 text-xs text-gray-500 border-t">
             <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-[#FF6B35]" /><span>Ruta</span></div>
+            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-green-500" /><span>Recogida</span></div>
+            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-red-500" /><span>Destino</span></div>
             <div className="flex items-center gap-1"><img src="https://cdn-icons-png.flaticon.com/512/1998/1998627.png" className="w-4 h-4" alt="" /><span>Mandadito</span></div>
-            <div className="flex items-center gap-1"><div className="w-4 h-4 rounded-full bg-red-500" /><span>Destino</span></div>
           </div>
         </div>
 
@@ -349,14 +423,14 @@ const OrderTracking = () => {
             </h3>
             <div className="space-y-3">
               <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 text-sm">📍</div>
+                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 text-sm">📍</div>
                 <div className="flex-1">
                   <p className="text-xs text-gray-500">Punto de recogida</p>
                   <p className="text-sm text-gray-700 break-words">{order.pickupAddress}</p>
                 </div>
               </div>
               <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 text-sm">🏠</div>
+                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-sm">🏠</div>
                 <div className="flex-1">
                   <p className="text-xs text-gray-500">Destino</p>
                   <p className="text-sm text-gray-700 break-words">{order.deliveryAddress}</p>
@@ -367,12 +441,23 @@ const OrderTracking = () => {
         )}
 
         {/* Acciones */}
-        <button
-          onClick={openInGoogleMaps}
-          className="w-full bg-[#FF6B35] text-white py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-[#e55a2b] transition-colors"
-        >
-          <FiMap /> Abrir en Google Maps
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={openInGoogleMaps}
+            className="flex-1 bg-[#FF6B35] text-white py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-[#e55a2b] transition-colors"
+          >
+            <FiMap /> Abrir en Google Maps
+          </button>
+          
+          {isTracking && (
+            <button
+              onClick={handleRefreshLocation}
+              className="px-4 bg-gray-100 text-gray-700 py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors"
+            >
+              <FiRefreshCw />
+            </button>
+          )}
+        </div>
 
         {order && !isTracking && order.status !== 'completed' && (
           <div className="bg-gray-50 rounded-2xl p-5 text-center mt-4">

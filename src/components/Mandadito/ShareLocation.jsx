@@ -11,11 +11,16 @@ const ShareLocation = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { socket, isConnected } = useSocket();
-  const { location, error, loading: locationLoading, permission, requestPermission } = useGeolocation({ enableHighAccuracy: true });
+  const { location, error, loading: locationLoading, permission, requestPermission } = useGeolocation({ 
+    enableHighAccuracy: true,
+    timeout: 10000,
+    maximumAge: 0
+  });
   const [sharing, setSharing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [sending, setSending] = useState(false);
   const [order, setOrder] = useState(null);
+  const [sendingLocation, setSendingLocation] = useState(false);
 
   useEffect(() => { 
     fetchOrder();
@@ -24,18 +29,48 @@ const ShareLocation = () => {
     }
   }, []);
 
+  // Enviar ubicación al backend
+  const sendLocationToServer = async (loc) => {
+    if (!loc || sendingLocation) return;
+    
+    setSendingLocation(true);
+    try {
+      await api.post('/mandadito/location', {
+        lat: loc.lat,
+        lng: loc.lng,
+        accuracy: loc.accuracy
+      });
+      console.log('📍 Ubicación enviada al servidor');
+      setLastUpdate(new Date());
+    } catch (error) {
+      console.error('Error enviando ubicación:', error);
+    } finally {
+      setSendingLocation(false);
+    }
+  };
+
+  // Enviar ubicación por socket
   useEffect(() => {
     if (!socket || !isConnected) return;
     
     if (location && sharing) {
+      // Enviar inmediatamente
+      socket.emit('updateLocation', {
+        orderId,
+        location: { lat: location.lat, lng: location.lng, accuracy: location.accuracy }
+      });
+      sendLocationToServer(location);
+      
+      // Configurar intervalo
       const interval = setInterval(() => {
-        console.log('📍 Enviando ubicación:', location);
-        socket.emit('updateLocation', {
-          orderId,
-          location: { lat: location.lat, lng: location.lng, accuracy: location.accuracy }
-        });
-        setLastUpdate(new Date());
-      }, 5000);
+        if (location) {
+          socket.emit('updateLocation', {
+            orderId,
+            location: { lat: location.lat, lng: location.lng, accuracy: location.accuracy }
+          });
+          sendLocationToServer(location);
+        }
+      }, 8000);
       
       return () => clearInterval(interval);
     }
@@ -53,9 +88,11 @@ const ShareLocation = () => {
 
   const toggleSharing = async () => {
     if (permission !== 'granted') {
-      requestPermission();
-      toast.info('Primero activa tu ubicación');
-      return;
+      const granted = await requestPermission();
+      if (!granted) {
+        toast.error('Necesitas activar la ubicación para compartir');
+        return;
+      }
     }
     
     setSending(true);

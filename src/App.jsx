@@ -41,6 +41,9 @@ import AdminReport from './components/Admin/AdminReport';
 import UsersList from './components/Admin/UsersList';
 import PendingVerification from './components/Admin/PendingVerification';
 
+// Common
+import Profile from './components/Common/Profile';
+
 function App() {
   const { isAuthenticated, user } = useAuth();
 
@@ -99,7 +102,9 @@ function App() {
           <Route path="/admin/users" element={<ProtectedRoute roles={['admin']}><UsersList /></ProtectedRoute>} />
           <Route path="/admin/verify" element={<ProtectedRoute roles={['admin']}><PendingVerification /></ProtectedRoute>} />
 
+          {/* Perfil */}
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
@@ -110,33 +115,5 @@ function App() {
     </Background>
   );
 }
-
-const Profile = () => {
-  const { user } = useAuth();
-  return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="max-w-md mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
-        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#FF6B35]/20 to-[#4361EE]/20 mx-auto mb-4 flex items-center justify-center overflow-hidden">
-          {user?.profilePhoto ? <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" /> : <span className="text-4xl font-bold text-[#FF6B35]">{user?.name?.charAt(0) || '?'}</span>}
-        </div>
-        <h2 className="text-xl font-bold text-gray-800">{user?.name}</h2>
-        <p className="text-gray-500">{user?.phone}</p>
-        <p className="text-sm text-gray-400 mt-2">Rol: {user?.role === 'client' ? 'Cliente' : user?.role === 'mandadito' ? 'Mandadito' : 'Administrador'}</p>
-        {user?.role === 'mandadito' && (
-          <>
-            <p className="text-[#FF6B35] font-bold mt-3">Crédito: C${user?.credit || 0}</p>
-            {user?.workSchedule?.enabled && <p className="text-xs text-gray-500 mt-2">Horario: {user.workSchedule.startTime} - {user.workSchedule.endTime}</p>}
-          </>
-        )}
-        {user?.rating > 0 && (
-          <div className="flex justify-center gap-1 mt-4">
-            {[...Array(5)].map((_, i) => <FiStar key={i} className={i < Math.round(user.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'} />)}
-            <span className="text-sm text-gray-500 ml-2">({user.totalRatings || 0})</span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
 
 export default App;
