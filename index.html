@@ -11,7 +11,7 @@
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="manifest" href="/manifest.json" />
     
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover" />
     <meta name="theme-color" content="#FF6B35" />
     <meta name="description" content="Pueblo Click - Mandaditos rápidos y confiables en Juigalpa, Chontales" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -26,19 +26,27 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://maps.googleapis.com">
     
-    <!-- Google Maps API - CORREGIDO con loading=async -->
+    <!-- Google Maps API con TU clave -->
     <script>
       window.initMap = function() {
-        console.log('✅ Google Maps API cargada');
+        console.log('✅ Google Maps API cargada correctamente');
         window.dispatchEvent(new Event('google-maps-loaded'));
       };
     </script>
     <script 
-      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCIqvtE3fiX5p78QQ_30iIDWgW_JAn1b40&libraries=places,geometry&callback=initMap&loading=async" 
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCIqvtE3fiX5p78QQ_30iIDWgW_JAn1b40&libraries=places,geometry&callback=initMap&loading=async"
       async
+      defer
     ></script>
     
+    <!-- Fuentes -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+      .gm-style {
+        background-color: #f5f5f5 !important;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

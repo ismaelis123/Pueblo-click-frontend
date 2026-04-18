@@ -16,10 +16,12 @@ const PendingOrders = () => {
 
   const fetchPendingOrders = async () => {
     try {
+      setLoading(true);
       const response = await api.get('/mandadito/orders/pending');
       setOrders(response.data);
     } catch (error) {
       toast.error('Error al cargar órdenes pendientes');
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -29,20 +31,15 @@ const PendingOrders = () => {
     setAcceptingId(order._id);
     try {
       let response;
-
-      // 🔑 LÓGICA CORREGIDA: elegir el endpoint correcto
       if (order.status === 'pending_confirmation') {
-        // Orden asignada directamente por cliente
         response = await api.put(`/mandadito/orders/${order._id}/accept-direct`);
       } else {
-        // Orden pública (pending)
         response = await api.put(`/mandadito/orders/${order._id}/accept`);
       }
-
-      toast.success(response.data.message || '✅ Mandado aceptado correctamente');
-      fetchPendingOrders(); // recargar lista
+      toast.success(response.data.message || '✅ Mandado aceptado');
+      fetchPendingOrders();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Error al aceptar el mandado');
+      toast.error(error.response?.data?.message || 'Error al aceptar');
     } finally {
       setAcceptingId(null);
     }
@@ -56,72 +53,71 @@ const PendingOrders = () => {
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 pb-20 md:pb-8">
-      <h1 className="text-2xl font-bold text-text mb-6">📦 Órdenes Pendientes</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">📦 Órdenes Pendientes</h1>
+        <button onClick={fetchPendingOrders} className="text-sm text-[#FF6B35] hover:underline">
+          🔄 Actualizar
+        </button>
+      </div>
 
       {orders.length === 0 ? (
-        <div className="card text-center py-12">
+        <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
           <FiMapPin className="text-6xl text-gray-300 mx-auto mb-4" />
           <p className="text-gray-500">No hay órdenes pendientes en este momento</p>
         </div>
       ) : (
         <div className="space-y-4">
           {orders.map((order) => (
-            <div key={order._id} className="card">
+            <div key={order._id} className="bg-white rounded-2xl shadow-lg p-5">
               <div className="flex justify-between items-start mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#FF6B35]/10 flex items-center justify-center">
                     {order.client?.profilePhoto ? (
-                      <img
-                        src={order.client.profilePhoto}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={order.client.profilePhoto} alt="" className="w-full h-full rounded-full object-cover" />
                     ) : (
-                      <FiUser className="text-primary" />
+                      <FiUser className="text-[#FF6B35]" />
                     )}
                   </div>
                   <div>
-                    <p className="font-semibold text-text">{order.client?.name}</p>
-                    <button
-                      onClick={() => handleCallClient(order.client?.phone)}
-                      className="flex items-center gap-1 text-xs text-secondary hover:text-secondary/80"
-                    >
-                      <FiPhone className="text-xs" />
-                      <span>{order.client?.phone}</span>
-                    </button>
+                    <p className="font-semibold text-gray-800">{order.client?.name || 'Cliente'}</p>
+                    {order.client?.phone && (
+                      <button onClick={() => handleCallClient(order.client.phone)} className="flex items-center gap-1 text-xs text-[#FF6B35] hover:underline">
+                        <FiPhone className="text-xs" /> {order.client.phone}
+                      </button>
+                    )}
                   </div>
                 </div>
-
-                <span className={`badge ${order.status === 'pending_confirmation' ? 'badge-accepted' : 'badge-pending'}`}>
-                  {order.status === 'pending_confirmation' ? 'Asignado directo' : 'Pendiente'}
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  order.status === 'pending_confirmation' ? 'bg-purple-100 text-purple-700' : 'bg-yellow-100 text-yellow-700'
+                }`}>
+                  {order.status === 'pending_confirmation' ? 'Asignado a ti' : 'Público'}
                 </span>
               </div>
 
               <p className="text-gray-700 mb-3">{order.description}</p>
 
               <div className="space-y-1 text-sm text-gray-500 mb-4">
-                <p>📍 Recoger en: {order.pickupAddress}</p>
-                <p>🏠 Entregar en: {order.deliveryAddress}</p>
+                <p>📍 Recoger: {order.pickupAddress}</p>
+                <p>🏠 Entregar: {order.deliveryAddress}</p>
                 <p className="text-xs text-gray-400">{formatDate(order.createdAt)}</p>
               </div>
 
               <div className="flex justify-between items-center pt-3 border-t border-gray-100">
                 <div>
-                  <span className="font-semibold text-primary">Ganancia: {formatCurrency(order.amount)}</span>
-                  <p className="text-xs text-gray-400">*Se descuenta al aceptar</p>
+                  <span className="font-semibold text-[#FF6B35]">Ganancia: {formatCurrency(order.amount || 5)}</span>
+                  <p className="text-xs text-gray-400">Se descuenta al aceptar</p>
                 </div>
-
                 <button
                   onClick={() => handleAcceptOrder(order)}
                   disabled={acceptingId === order._id}
-                  className="btn-primary text-sm py-2 px-6 flex items-center gap-2"
+                  className="bg-[#FF6B35] text-white px-6 py-2 rounded-xl flex items-center gap-2 hover:bg-[#e55a2b] disabled:opacity-50"
                 >
                   {acceptingId === order._id ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <FiCheck />
                   )}
-                  Aceptar Mandado
+                  Aceptar
                 </button>
               </div>
             </div>

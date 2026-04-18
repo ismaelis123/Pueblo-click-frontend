@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   FiMapPin, FiNavigation, FiShare, FiCheck, FiLoader, 
-  FiTarget, FiAlertCircle, FiArrowLeft, FiPackage, FiHome 
+  FiTarget, FiAlertCircle, FiArrowLeft, FiPackage, FiHome,
+  FiRefreshCw
 } from 'react-icons/fi';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { useSocket } from '../../hooks/useSocket';
@@ -24,15 +25,43 @@ const ShareLocation = () => {
   const [lastUpdate, setLastUpdate] = useState(null);
   const [sending, setSending] = useState(false);
   const [order, setOrder] = useState(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
   const [routeInfo, setRouteInfo] = useState(null);
+  const [mapError, setMapError] = useState(null);
   
   const mapRef = useRef(null);
   const mapContainerRef = useRef(null);
   const markersRef = useRef({});
   const directionsRendererRef = useRef(null);
 
-  // Cargar detalles de la orden
+  // Esperar Google Maps
+  useEffect(() => {
+    const checkGoogleMaps = () => {
+      if (window.google && window.google.maps) {
+        console.log('✅ Google Maps disponible');
+        setMapReady(true);
+        return true;
+      }
+      return false;
+    };
+    
+    if (checkGoogleMaps()) return;
+    
+    const handleMapsLoaded = () => {
+      console.log('✅ Google Maps cargado por evento');
+      setMapReady(true);
+    };
+    
+    window.addEventListener('google-maps-loaded', handleMapsLoaded);
+    const interval = setInterval(checkGoogleMaps, 300);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('google-maps-loaded', handleMapsLoaded);
+    };
+  }, []);
+
+  // Cargar orden
   useEffect(() => {
     fetchOrderDetails();
     if (permission === 'prompt') {
@@ -40,21 +69,21 @@ const ShareLocation = () => {
     }
   }, [orderId]);
 
-  // Inicializar mapa cuando tengamos la orden
+  // Inicializar mapa
   useEffect(() => {
-    if (order && !mapLoaded) {
-      initMap();
+    if (order && mapReady && mapContainerRef.current && !mapRef.current) {
+      initializeMap();
     }
-  }, [order, mapLoaded]);
+  }, [order, mapReady]);
 
-  // Actualizar marcadores cuando cambia la ubicación
+  // Actualizar ubicación en el mapa
   useEffect(() => {
     if (mapRef.current && location && order) {
       updateMapWithLocation();
     }
   }, [location, order]);
 
-  // Enviar ubicación al backend periódicamente
+  // Enviar ubicación periódicamente
   useEffect(() => {
     if (!location || !sharing) return;
     
@@ -69,7 +98,7 @@ const ShareLocation = () => {
         if (socket && isConnected) {
           socket.emit('updateLocation', {
             orderId,
-            location: { lat: location.lat, lng: location.lng, accuracy: location.accuracy }
+            location: { lat: location.lat, lng: location.lng }
           });
         }
         
@@ -92,69 +121,81 @@ const ShareLocation = () => {
       setSharing(response.data.mandadito?.isSharingLocation || false);
     } catch (error) {
       console.error('Error fetching order:', error);
-      toast.error('Error al cargar los detalles de la orden');
+      toast.error('Error al cargar la orden');
     }
   };
 
-  const initMap = useCallback(() => {
-    if (!mapContainerRef.current || !window.google) return;
+  const initializeMap = () => {
+    if (!mapContainerRef.current || !window.google) {
+      setMapError('No se pudo cargar el mapa');
+      return;
+    }
 
-    const defaultCenter = { lat: 12.106, lng: -85.364 };
-    
-    mapRef.current = new window.google.maps.Map(mapContainerRef.current, {
-      center: defaultCenter,
-      zoom: 13,
-      zoomControl: true,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: true,
-    });
+    console.log('🗺️ Inicializando mapa para mandadito...');
 
-    directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
-      map: mapRef.current,
-      suppressMarkers: false,
-      polylineOptions: {
-        strokeColor: '#FF6B35',
-        strokeWeight: 5,
-        strokeOpacity: 0.8,
-      },
-    });
+    try {
+      const defaultCenter = { lat: 12.106, lng: -85.364 };
+      
+      let initialCenter = defaultCenter;
+      if (location?.lat) {
+        initialCenter = { lat: location.lat, lng: location.lng };
+      } else if (order?.pickupLocation?.lat) {
+        initialCenter = { lat: order.pickupLocation.lat, lng: order.pickupLocation.lng };
+      }
 
-    setMapLoaded(true);
-    updateMapWithOrderData();
-  }, [order]);
+      mapRef.current = new window.google.maps.Map(mapContainerRef.current, {
+        center: initialCenter,
+        zoom: 14,
+        zoomControl: true,
+        mapTypeControl: true,
+        streetViewControl: false,
+        fullscreenControl: true,
+      });
 
-  const updateMapWithOrderData = () => {
+      directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
+        map: mapRef.current,
+        suppressMarkers: false,
+        polylineOptions: {
+          strokeColor: '#FF6B35',
+          strokeWeight: 6,
+          strokeOpacity: 0.9,
+        },
+      });
+
+      addAllMarkers();
+      setMapError(null);
+      console.log('✅ Mapa del mandadito inicializado');
+    } catch (error) {
+      console.error('❌ Error inicializando mapa:', error);
+      setMapError('Error al cargar el mapa');
+    }
+  };
+
+  const addAllMarkers = () => {
     if (!mapRef.current || !order) return;
 
     const bounds = new window.google.maps.LatLngBounds();
     
-    // Limpiar marcadores existentes
     Object.values(markersRef.current).forEach(marker => marker?.setMap(null));
     markersRef.current = {};
 
-    // Marcador de recogida (verde)
+    // Marcador de recogida
     if (order.pickupLocation?.lat) {
       const pickupPos = { lat: order.pickupLocation.lat, lng: order.pickupLocation.lng };
       markersRef.current.pickup = new window.google.maps.Marker({
         position: pickupPos,
         map: mapRef.current,
-        title: '📍 Punto de recogida',
+        title: '📦 Punto de recogida',
         icon: {
           url: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
-          scaledSize: new window.google.maps.Size(40, 40),
+          scaledSize: new window.google.maps.Size(45, 45),
         },
-        label: {
-          text: '📦',
-          color: 'white',
-          fontSize: '14px',
-          className: 'marker-label'
-        }
+        animation: window.google.maps.Animation.DROP,
       });
       bounds.extend(pickupPos);
     }
 
-    // Marcador de entrega (rojo)
+    // Marcador de entrega
     if (order.deliveryLocation?.lat) {
       const deliveryPos = { lat: order.deliveryLocation.lat, lng: order.deliveryLocation.lng };
       markersRef.current.delivery = new window.google.maps.Marker({
@@ -163,36 +204,47 @@ const ShareLocation = () => {
         title: '🏠 Punto de entrega',
         icon: {
           url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
-          scaledSize: new window.google.maps.Size(40, 40),
+          scaledSize: new window.google.maps.Size(45, 45),
         },
-        label: {
-          text: '🏠',
-          color: 'white',
-          fontSize: '14px',
-        }
+        animation: window.google.maps.Animation.DROP,
       });
       bounds.extend(deliveryPos);
     }
 
-    // Calcular ruta entre recogida y entrega
-    if (order.pickupLocation?.lat && order.deliveryLocation?.lat) {
-      calculateRoute(
-        { lat: order.pickupLocation.lat, lng: order.pickupLocation.lng },
-        { lat: order.deliveryLocation.lat, lng: order.deliveryLocation.lng }
-      );
+    // Marcador del mandadito
+    if (location?.lat) {
+      const currentPos = { lat: location.lat, lng: location.lng };
+      markersRef.current.mandadito = new window.google.maps.Marker({
+        position: currentPos,
+        map: mapRef.current,
+        title: '🛵 Tu ubicación',
+        icon: {
+          url: 'https://cdn-icons-png.flaticon.com/512/1998/1998627.png',
+          scaledSize: new window.google.maps.Size(40, 40),
+        },
+      });
+      bounds.extend(currentPos);
+      
+      // Calcular ruta hacia recogida o entrega
+      const destination = order.status === 'accepted' && !order.mandaditoDeliveredAt 
+        ? order.pickupLocation 
+        : order.deliveryLocation;
+        
+      if (destination?.lat) {
+        calculateRoute(currentPos, { lat: destination.lat, lng: destination.lng });
+      }
     }
 
     if (!bounds.isEmpty()) {
-      mapRef.current.fitBounds(bounds, { padding: 50 });
+      mapRef.current.fitBounds(bounds, { padding: 60 });
     }
   };
 
   const updateMapWithLocation = () => {
-    if (!mapRef.current || !location || !order) return;
+    if (!mapRef.current || !location) return;
 
     const currentPos = { lat: location.lat, lng: location.lng };
 
-    // Actualizar o crear marcador del mandadito
     if (markersRef.current.mandadito) {
       markersRef.current.mandadito.setPosition(currentPos);
     } else {
@@ -204,29 +256,16 @@ const ShareLocation = () => {
           url: 'https://cdn-icons-png.flaticon.com/512/1998/1998627.png',
           scaledSize: new window.google.maps.Size(40, 40),
         },
-        label: {
-          text: '🛵',
-          color: 'white',
-          fontSize: '14px',
-        }
       });
     }
 
-    // Actualizar ruta desde ubicación actual hasta recogida o entrega
-    if (order.status === 'accepted') {
-      if (!order.mandaditoDeliveredAt && order.pickupLocation?.lat) {
-        // Si no ha recogido, ruta hacia punto de recogida
-        calculateRoute(
-          currentPos,
-          { lat: order.pickupLocation.lat, lng: order.pickupLocation.lng }
-        );
-      } else if (order.deliveryLocation?.lat) {
-        // Si ya recogió, ruta hacia punto de entrega
-        calculateRoute(
-          currentPos,
-          { lat: order.deliveryLocation.lat, lng: order.deliveryLocation.lng }
-        );
-      }
+    // Actualizar ruta
+    const destination = order?.status === 'accepted' && !order?.mandaditoDeliveredAt 
+      ? order?.pickupLocation 
+      : order?.deliveryLocation;
+      
+    if (destination?.lat) {
+      calculateRoute(currentPos, { lat: destination.lat, lng: destination.lng });
     }
   };
 
@@ -236,29 +275,16 @@ const ShareLocation = () => {
     const directionsService = new window.google.maps.DirectionsService();
     
     directionsService.route(
-      {
-        origin: origin,
-        destination: destination,
-        travelMode: window.google.maps.TravelMode.DRIVING,
-      },
+      { origin, destination, travelMode: window.google.maps.TravelMode.DRIVING },
       (result, status) => {
         if (status === 'OK') {
           directionsRendererRef.current.setDirections(result);
           const route = result.routes[0];
-          if (route && route.legs[0]) {
+          if (route?.legs[0]) {
             setRouteInfo({
               distance: route.legs[0].distance.text,
               duration: route.legs[0].duration.text,
             });
-          }
-        } else {
-          console.log('No se pudo calcular la ruta:', status);
-          // Fallback: línea recta
-          if (markersRef.current.pickup && markersRef.current.delivery) {
-            mapRef.current.fitBounds(
-              new window.google.maps.LatLngBounds(origin, destination),
-              { padding: 50 }
-            );
           }
         }
       }
@@ -289,23 +315,25 @@ const ShareLocation = () => {
   const openInGoogleMaps = () => {
     if (!order) return;
     
-    let destination;
-    if (order.status === 'accepted' && !order.mandaditoDeliveredAt) {
-      destination = order.pickupLocation;
-    } else {
-      destination = order.deliveryLocation;
-    }
+    const destination = order.status === 'accepted' && !order.mandaditoDeliveredAt 
+      ? order.pickupLocation 
+      : order.deliveryLocation;
     
-    if (location && destination?.lat) {
-      const url = `https://www.google.com/maps/dir/?api=1&origin=${location.lat},${location.lng}&destination=${destination.lat},${destination.lng}&travelmode=driving`;
-      window.open(url, '_blank');
+    if (location?.lat && destination?.lat) {
+      window.open(`https://www.google.com/maps/dir/?api=1&origin=${location.lat},${location.lng}&destination=${destination.lat},${destination.lng}&travelmode=driving`, '_blank');
+    }
+  };
+
+  const handleRetryMap = () => {
+    setMapError(null);
+    if (mapContainerRef.current && window.google) {
+      initializeMap();
     }
   };
 
   return (
     <Background>
       <div className="max-w-md mx-auto py-4 px-4 min-h-screen flex flex-col">
-        {/* Header */}
         <div className="flex items-center gap-3 mb-4">
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full">
             <FiArrowLeft className="text-xl" />
@@ -316,94 +344,62 @@ const ShareLocation = () => {
         {/* Mapa */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-4">
           <div className="relative" style={{ height: '350px', width: '100%' }}>
-            {!mapLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
-                <FiLoader className="text-3xl text-[#FF6B35] animate-spin" />
-              </div>
-            )}
-            <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />
-          </div>
-          
-          {/* Leyenda del mapa */}
-          <div className="p-3 bg-gray-50 flex flex-wrap justify-center gap-4 text-xs">
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-green-500" />
-              <span>Recogida</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-red-500" />
-              <span>Entrega</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <img src="https://cdn-icons-png.flaticon.com/512/1998/1998627.png" className="w-4 h-4" alt="" />
-              <span>Tú</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-[#FF6B35]" />
-              <span>Ruta</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Panel de información */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4">
-          <h3 className="font-semibold text-gray-800 mb-3">📋 Información de la ruta</h3>
-          
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                <FiPackage className="text-green-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs text-gray-500">Punto de recogida</p>
-                <p className="text-sm text-gray-700">{order?.pickupAddress}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                <FiHome className="text-red-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs text-gray-500">Punto de entrega</p>
-                <p className="text-sm text-gray-700">{order?.deliveryAddress}</p>
-              </div>
-            </div>
-            
-            {routeInfo && (
-              <div className="bg-gray-50 rounded-xl p-3 mt-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Distancia:</span>
-                  <span className="font-semibold">{routeInfo.distance}</span>
-                </div>
-                <div className="flex justify-between text-sm mt-1">
-                  <span className="text-gray-500">Tiempo estimado:</span>
-                  <span className="font-semibold">{routeInfo.duration}</span>
+            {mapError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-30">
+                <div className="text-center p-4">
+                  <FiAlertCircle className="text-4xl text-red-400 mx-auto mb-2" />
+                  <p className="text-gray-600 mb-3">{mapError}</p>
+                  <button onClick={handleRetryMap} className="bg-[#FF6B35] text-white px-4 py-2 rounded-xl">
+                    Reintentar
+                  </button>
                 </div>
               </div>
             )}
+            <div ref={mapContainerRef} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }} />
+          </div>
+          
+          <div className="p-3 bg-gray-50 flex flex-wrap justify-center gap-4 text-xs border-t">
+            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-green-500" /><span>Recogida</span></div>
+            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-red-500" /><span>Entrega</span></div>
+            <div className="flex items-center gap-1"><img src="https://cdn-icons-png.flaticon.com/512/1998/1998627.png" className="w-4 h-4" alt="" /><span>Tú</span></div>
           </div>
         </div>
 
-        {/* Panel de ubicación actual */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4">
-          <h3 className="font-semibold text-gray-800 mb-3">📍 Tu ubicación</h3>
+        {/* Info de ruta */}
+        {routeInfo && (
+          <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
+            <div className="flex justify-around">
+              <div className="text-center">
+                <p className="text-xs text-gray-500">Distancia</p>
+                <p className="font-semibold text-[#FF6B35]">{routeInfo.distance}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-gray-500">Tiempo estimado</p>
+                <p className="font-semibold text-[#FF6B35]">{routeInfo.duration}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Panel de ubicación */}
+        <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
+          <h3 className="font-semibold text-gray-800 mb-2">📍 Tu ubicación</h3>
           
           {permission === 'denied' ? (
-            <div className="text-center py-4">
+            <div className="text-center py-2">
               <FiAlertCircle className="text-3xl text-red-400 mx-auto mb-2" />
-              <p className="text-red-500 text-sm">Permiso de ubicación denegado</p>
-              <button onClick={requestPermission} className="mt-2 text-[#FF6B35] underline">
+              <p className="text-red-500 text-sm">Permiso denegado</p>
+              <button onClick={requestPermission} className="mt-2 text-[#FF6B35] underline text-sm">
                 Solicitar permiso
               </button>
             </div>
           ) : locationLoading ? (
-            <div className="flex items-center justify-center gap-2 py-4">
+            <div className="flex items-center justify-center gap-2 py-2">
               <FiLoader className="animate-spin" /> Obteniendo ubicación...
             </div>
           ) : location ? (
             <div>
-              <p className="text-sm text-gray-600">
+              <p className="text-xs text-gray-500 font-mono">
                 Lat: {location.lat.toFixed(6)}<br />
                 Lng: {location.lng.toFixed(6)}
               </p>
@@ -414,13 +410,11 @@ const ShareLocation = () => {
               )}
             </div>
           ) : (
-            <div className="text-center py-4">
-              <p className="text-gray-500">Esperando ubicación...</p>
-            </div>
+            <p className="text-gray-500 text-sm text-center py-2">Esperando ubicación...</p>
           )}
         </div>
 
-        {/* Botones de acción */}
+        {/* Botones */}
         <div className="space-y-3">
           <button
             onClick={toggleSharing}
@@ -438,10 +432,7 @@ const ShareLocation = () => {
           </button>
 
           {location && permission === 'granted' && (
-            <button 
-              onClick={openInGoogleMaps} 
-              className="w-full border border-gray-300 text-gray-600 py-3 rounded-xl flex items-center justify-center gap-2"
-            >
+            <button onClick={openInGoogleMaps} className="w-full border border-gray-300 text-gray-600 py-3 rounded-xl flex items-center justify-center gap-2">
               <FiNavigation /> Abrir en Google Maps
             </button>
           )}
@@ -452,7 +443,7 @@ const ShareLocation = () => {
             isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
           }`}>
             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-            {isConnected ? 'Conectado al servidor' : 'Desconectado'}
+            {isConnected ? 'Conectado' : 'Desconectado'}
           </div>
         </div>
       </div>
