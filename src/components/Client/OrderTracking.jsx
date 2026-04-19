@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   FiArrowLeft, FiMapPin, FiClock, FiCompass, FiMap, 
   FiUser, FiTarget, FiLoader, FiRefreshCw, FiPackage, FiHome,
-  FiNavigation, FiMaximize
+  FiNavigation, FiAlertCircle, FiPhone, FiMessageSquare
 } from 'react-icons/fi';
 import api from '../../services/api';
 import { useSocket } from '../../hooks/useSocket';
@@ -15,31 +15,28 @@ const OrderTracking = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { socket, isConnected } = useSocket();
+  
   const [order, setOrder] = useState(null);
   const [mandaditoLocation, setMandaditoLocation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [mapReady, setMapReady] = useState(false);
+  const [mapError, setMapError] = useState(null);
   const [updating, setUpdating] = useState(false);
   const [routeInfo, setRouteInfo] = useState(null);
-  const [mapError, setMapError] = useState(null);
+  const [isSharing, setIsSharing] = useState(false);
   
   const mapRef = useRef(null);
   const mapContainerRef = useRef(null);
   const markersRef = useRef({});
   const directionsRendererRef = useRef(null);
-
-  // Inicializar mapa cuando todo esté listo
-  useEffect(() => {
-    if (order && mapContainerRef.current && window.google && !mapRef.current) {
-      initializeMap();
-    }
-  }, [order, mapContainerRef.current]);
+  const googleMapsLoadedRef = useRef(false);
 
   // Esperar a que Google Maps esté disponible
   useEffect(() => {
     const checkGoogleMaps = () => {
       if (window.google && window.google.maps) {
-        console.log('✅ Google Maps disponible');
+        console.log('✅ Google Maps disponible para cliente');
+        googleMapsLoadedRef.current = true;
         setMapReady(true);
         return true;
       }
@@ -50,15 +47,14 @@ const OrderTracking = () => {
     
     const handleMapsLoaded = () => {
       console.log('✅ Google Maps cargado por evento');
+      googleMapsLoadedRef.current = true;
       setMapReady(true);
     };
     
     window.addEventListener('google-maps-loaded', handleMapsLoaded);
     
     const interval = setInterval(() => {
-      if (checkGoogleMaps()) {
-        clearInterval(interval);
-      }
+      if (checkGoogleMaps()) clearInterval(interval);
     }, 300);
     
     return () => {
@@ -72,17 +68,30 @@ const OrderTracking = () => {
     fetchOrder();
   }, [orderId]);
 
+  // Inicializar mapa cuando todo esté listo
+  useEffect(() => {
+    if (mapReady && order && mapContainerRef.current && !mapRef.current) {
+      setTimeout(() => {
+        initializeMap();
+      }, 100);
+    }
+  }, [mapReady, order]);
+
   // Socket para ubicación en tiempo real
   useEffect(() => {
     if (socket) {
       socket.on('locationUpdate', handleLocationUpdate);
-      return () => socket.off('locationUpdate');
+      socket.on('orderUpdated', handleOrderUpdated);
+      return () => {
+        socket.off('locationUpdate');
+        socket.off('orderUpdated');
+      };
     }
   }, [socket, orderId]);
 
   const fetchOrder = async () => {
     try {
-      console.log('📦 Cargando orden:', orderId);
+      console.log('📦 [Cliente] Cargando orden:', orderId);
       const response = await api.get('/client/orders');
       const found = response.data.find(o => o._id === orderId);
       
@@ -92,13 +101,14 @@ const OrderTracking = () => {
         return;
       }
       
-      console.log('✅ Orden cargada:', found);
+      console.log('✅ [Cliente] Orden cargada:', found);
       setOrder(found);
       
       // Verificar ubicación del mandadito
       if (found.mandadito?.currentLocation?.lat) {
-        console.log('📍 Ubicación del mandadito encontrada:', found.mandadito.currentLocation);
+        console.log('📍 [Cliente] Ubicación inicial del mandadito:', found.mandadito.currentLocation);
         setMandaditoLocation(found.mandadito.currentLocation);
+        setIsSharing(true);
       }
       
       // Intentar obtener ubicación actualizada
@@ -106,15 +116,17 @@ const OrderTracking = () => {
         try {
           const locResponse = await api.get(`/client/orders/${orderId}/location`);
           if (locResponse.data.location) {
-            console.log('📍 Ubicación actualizada:', locResponse.data.location);
+            console.log('📍 [Cliente] Ubicación actualizada:', locResponse.data.location);
             setMandaditoLocation(locResponse.data.location);
+            setIsSharing(true);
           }
         } catch (err) {
-          console.log('⚠️ Mandadito no está compartiendo ubicación');
+          console.log('⚠️ [Cliente] Mandadito no está compartiendo ubicación');
+          setIsSharing(false);
         }
       }
     } catch (error) {
-      console.error('❌ Error cargando orden:', error);
+      console.error('❌ [Cliente] Error cargando orden:', error);
       toast.error('Error al cargar la orden');
       navigate('/client/orders');
     } finally {
@@ -124,8 +136,9 @@ const OrderTracking = () => {
 
   const handleLocationUpdate = (data) => {
     if (data.orderId === orderId && data.location) {
-      console.log('📍 Nueva ubicación recibida:', data.location);
+      console.log('📍 [Cliente] Nueva ubicación recibida:', data.location);
       setMandaditoLocation(data.location);
+      setIsSharing(true);
       setUpdating(true);
       setTimeout(() => setUpdating(false), 1000);
       
@@ -135,26 +148,25 @@ const OrderTracking = () => {
     }
   };
 
+  const handleOrderUpdated = (updatedOrder) => {
+    if (updatedOrder._id === orderId) {
+      console.log('🔄 [Cliente] Orden actualizada:', updatedOrder.status);
+      setOrder(updatedOrder);
+    }
+  };
+
   const initializeMap = () => {
-    if (!mapContainerRef.current) {
-      console.log('❌ Contenedor del mapa no encontrado');
-      setMapError('No se encontró el contenedor del mapa');
+    if (!mapContainerRef.current || !window.google) {
+      setMapError('No se pudo cargar el mapa');
       return;
     }
 
-    if (!window.google) {
-      console.log('❌ Google Maps no disponible');
-      setMapError('Google Maps no está disponible');
-      return;
-    }
-
-    console.log('🗺️ Inicializando mapa...');
+    console.log('🗺️ [Cliente] Inicializando mapa...');
 
     try {
       // Centro por defecto: Juigalpa
       const defaultCenter = { lat: 12.106, lng: -85.364 };
       
-      // Determinar el centro inicial
       let initialCenter = defaultCenter;
       let initialZoom = 13;
       
@@ -191,13 +203,11 @@ const OrderTracking = () => {
         },
       });
 
-      // Agregar marcadores
       addAllMarkers();
-      
       setMapError(null);
-      console.log('✅ Mapa inicializado correctamente');
+      console.log('✅ [Cliente] Mapa inicializado correctamente');
     } catch (error) {
-      console.error('❌ Error inicializando mapa:', error);
+      console.error('❌ [Cliente] Error inicializando mapa:', error);
       setMapError('Error al cargar el mapa');
     }
   };
@@ -234,7 +244,6 @@ const OrderTracking = () => {
         animation: window.google.maps.Animation.DROP,
       });
 
-      // InfoWindow para recogida
       const pickupInfo = new window.google.maps.InfoWindow({
         content: `
           <div style="padding: 8px; max-width: 200px;">
@@ -322,6 +331,7 @@ const OrderTracking = () => {
       });
       
       bounds.extend(mandaditoPos);
+      setIsSharing(true);
       
       // Calcular ruta desde mandadito hasta entrega
       if (order.deliveryLocation?.lat) {
@@ -371,6 +381,8 @@ const OrderTracking = () => {
       });
     }
 
+    setIsSharing(true);
+
     // Actualizar ruta
     if (order?.deliveryLocation?.lat) {
       calculateRoute(currentPos, { 
@@ -379,7 +391,7 @@ const OrderTracking = () => {
       });
     }
 
-    // Mover el mapa para seguir al mandadito (opcional)
+    // Mover el mapa para seguir al mandadito
     if (markersRef.current.delivery) {
       const bounds = new window.google.maps.LatLngBounds();
       bounds.extend(currentPos);
@@ -411,7 +423,7 @@ const OrderTracking = () => {
             });
           }
         } else {
-          console.log('⚠️ No se pudo calcular la ruta:', status);
+          console.log('⚠️ [Cliente] No se pudo calcular la ruta:', status);
         }
       }
     );
@@ -433,6 +445,7 @@ const OrderTracking = () => {
       if (response.data.location) {
         setMandaditoLocation(response.data.location);
         updateMandaditoMarker(response.data.location);
+        setIsSharing(true);
         toast.success('Ubicación actualizada');
       } else {
         toast.error('El mandadito no está compartiendo su ubicación');
@@ -440,6 +453,16 @@ const OrderTracking = () => {
     } catch (error) {
       toast.error('No se pudo obtener la ubicación');
     }
+  };
+
+  const handleCallMandadito = () => {
+    if (order?.mandadito?.phone) {
+      window.location.href = `tel:${order.mandadito.phone}`;
+    }
+  };
+
+  const handleOpenChat = () => {
+    navigate(`/client/chat/${orderId}`);
   };
 
   const handleRetryMap = () => {
@@ -452,7 +475,6 @@ const OrderTracking = () => {
   if (loading) return <LoadingSpinner />;
 
   const isTracking = order?.status === 'accepted' || order?.status === 'delivered';
-  const isSharing = mandaditoLocation !== null;
 
   return (
     <Background>
@@ -474,9 +496,9 @@ const OrderTracking = () => {
         {/* Info de la orden y mandadito */}
         {order && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#FF6B35]/10 flex items-center justify-center overflow-hidden">
+                <div className="w-12 h-12 rounded-full bg-[#FF6B35]/10 flex items-center justify-center overflow-hidden">
                   {order.mandadito?.profilePhoto ? (
                     <img src={order.mandadito.profilePhoto} alt="" className="w-full h-full object-cover" />
                   ) : (
@@ -487,7 +509,7 @@ const OrderTracking = () => {
                   <p className="font-semibold text-gray-800">
                     {order.mandadito?.name || 'Mandadito asignado'}
                   </p>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 mt-1">
                     <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-300'} ${updating ? 'animate-pulse' : ''}`} />
                     <span className="text-xs text-gray-500">
                       {isSharing ? (updating ? 'Actualizando...' : 'En vivo') : 'Sin ubicación'}
@@ -507,6 +529,22 @@ const OrderTracking = () => {
               </div>
             </div>
             
+            {/* Botones de contacto */}
+            <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+              <button
+                onClick={handleCallMandadito}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-xl flex items-center justify-center gap-2 transition-colors"
+              >
+                <FiPhone className="text-sm" /> Llamar
+              </button>
+              <button
+                onClick={handleOpenChat}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-xl flex items-center justify-center gap-2 transition-colors"
+              >
+                <FiMessageSquare className="text-sm" /> Chat
+              </button>
+            </div>
+            
             {routeInfo && isSharing && (
               <div className="flex gap-4 mt-3 pt-3 border-t border-gray-100">
                 <div className="flex items-center gap-1 text-sm text-gray-600">
@@ -524,12 +562,12 @@ const OrderTracking = () => {
 
         {/* Mapa */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
-          <div className="relative" style={{ height: '450px', width: '100%' }}>
+          <div className="relative" style={{ height: '400px', width: '100%' }}>
             {/* Estados de carga/error */}
             {mapError && (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-30">
                 <div className="text-center p-6">
-                  <FiMap className="text-5xl text-gray-400 mx-auto mb-3" />
+                  <FiAlertCircle className="text-5xl text-red-400 mx-auto mb-3" />
                   <p className="text-gray-600 mb-4">{mapError}</p>
                   <button 
                     onClick={handleRetryMap}
@@ -564,7 +602,8 @@ const OrderTracking = () => {
             {/* Contenedor del mapa */}
             <div 
               ref={mapContainerRef} 
-              style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}
+              id="client-tracking-map"
+              style={{ height: '100%', width: '100%', backgroundColor: '#f5f5f5' }}
             />
           </div>
           
@@ -592,6 +631,7 @@ const OrderTracking = () => {
         {/* Direcciones */}
         {order && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+            <h3 className="font-semibold text-gray-800 mb-3">📋 Direcciones</h3>
             <div className="space-y-3">
               <div className="flex gap-3">
                 <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
