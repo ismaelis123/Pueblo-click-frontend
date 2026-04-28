@@ -43,6 +43,7 @@ import PendingVerification from './components/Admin/PendingVerification';
 
 // Common
 import Profile from './components/Common/Profile';
+import HelpSupport from './components/Common/HelpSupport';
 
 function App() {
   const { isAuthenticated, user } = useAuth();
@@ -102,8 +103,9 @@ function App() {
           <Route path="/admin/users" element={<ProtectedRoute roles={['admin']}><UsersList /></ProtectedRoute>} />
           <Route path="/admin/verify" element={<ProtectedRoute roles={['admin']}><PendingVerification /></ProtectedRoute>} />
 
-          {/* Perfil */}
+          {/* Perfil y Ayuda */}
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/help" element={<ProtectedRoute><HelpSupport /></ProtectedRoute>} />
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

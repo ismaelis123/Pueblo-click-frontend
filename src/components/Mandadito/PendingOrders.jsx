@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiMapPin, FiCheck, FiPhone, FiUser } from 'react-icons/fi';
+import { FiMapPin, FiCheck, FiPhone, FiUser, FiZap, FiNavigation } from 'react-icons/fi';
 import api from '../../services/api';
 import { formatDate, formatCurrency } from '../../utils/formatters';
 import LoadingSpinner from '../Common/LoadingSpinner';
@@ -49,6 +49,24 @@ const PendingOrders = () => {
     if (phone) window.location.href = `tel:${phone}`;
   };
 
+  // Función para obtener texto de distancia
+  const getDistanceText = (distance) => {
+    if (!distance) return '';
+    if (distance <= 2) return 'Cerca';
+    if (distance <= 5) return 'Moderado';
+    if (distance <= 8) return 'Largo';
+    return 'Muy largo';
+  };
+
+  // Función para obtener color de distancia
+  const getDistanceColor = (distance) => {
+    if (!distance) return 'text-gray-400';
+    if (distance <= 2) return 'text-green-600';
+    if (distance <= 5) return 'text-blue-600';
+    if (distance <= 8) return 'text-orange-600';
+    return 'text-red-600';
+  };
+
   if (loading) return <LoadingSpinner />;
 
   return (
@@ -87,24 +105,52 @@ const PendingOrders = () => {
                     )}
                   </div>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  order.status === 'pending_confirmation' ? 'bg-purple-100 text-purple-700' : 'bg-yellow-100 text-yellow-700'
-                }`}>
-                  {order.status === 'pending_confirmation' ? 'Asignado a ti' : 'Público'}
-                </span>
+                <div className="flex items-center gap-2">
+                  {order.isUrgent && (
+                    <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                      <FiZap className="text-xs" /> Urgente
+                    </span>
+                  )}
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    order.status === 'pending_confirmation' ? 'bg-purple-100 text-purple-700' : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {order.status === 'pending_confirmation' ? 'Asignado a ti' : 'Público'}
+                  </span>
+                </div>
               </div>
 
               <p className="text-gray-700 mb-3">{order.description}</p>
 
               <div className="space-y-1 text-sm text-gray-500 mb-4">
-                <p>📍 Recoger: {order.pickupAddress}</p>
-                <p>🏠 Entregar: {order.deliveryAddress}</p>
+                <div className="flex items-start gap-2">
+                  <span>📍</span>
+                  <p className="flex-1">Recoger: {order.pickupAddress}</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span>🏠</span>
+                  <p className="flex-1">Entregar: {order.deliveryAddress}</p>
+                </div>
+                {order.distance && (
+                  <div className="flex items-start gap-2">
+                    <FiNavigation className="text-xs mt-0.5" />
+                    <p className={`flex-1 text-xs ${getDistanceColor(order.distance)}`}>
+                      {order.distance.toFixed(1)} km • {getDistanceText(order.distance)}
+                    </p>
+                  </div>
+                )}
                 <p className="text-xs text-gray-400">{formatDate(order.createdAt)}</p>
               </div>
 
               <div className="flex justify-between items-center pt-3 border-t border-gray-100">
                 <div>
-                  <span className="font-semibold text-[#FF6B35]">Ganancia: {formatCurrency(order.amount || 5)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-[#FF6B35] text-lg">
+                      {formatCurrency(order.amount || 0)}
+                    </span>
+                    {order.isUrgent && (
+                      <span className="text-xs text-red-500">(Urgente)</span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-400">Se descuenta al aceptar</p>
                 </div>
                 <button

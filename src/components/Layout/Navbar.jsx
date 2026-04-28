@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { FiMenu, FiX, FiLogOut, FiHome, FiPackage, FiDollarSign, FiUsers, FiMapPin, FiUser, FiBell } from 'react-icons/fi';
+import { FiMenu, FiX, FiLogOut, FiHome, FiPackage, FiDollarSign, FiUsers, FiMapPin, FiUser, FiBell, FiHelpCircle } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import logo from '../../assets/logo.png';
 
@@ -29,6 +29,7 @@ const Navbar = () => {
         { to: '/client/orders', icon: FiPackage, label: 'Mis Órdenes' },
         { to: '/client/create-order', icon: FiHome, label: 'Crear Mandado' },
         { to: '/client/mandaditos', icon: FiUsers, label: 'Mandaditos' },
+        { to: '/help', icon: FiHelpCircle, label: 'Ayuda' },
       ];
     }
     if (isMandadito) {
@@ -38,6 +39,7 @@ const Navbar = () => {
         { to: '/mandadito/orders', icon: FiPackage, label: 'Mis Órdenes' },
         { to: '/mandadito/earnings', icon: FiDollarSign, label: 'Ganancias' },
         { to: '/mandadito/recharge', icon: FiDollarSign, label: 'Recargar' },
+        { to: '/help', icon: FiHelpCircle, label: 'Ayuda' },
       ];
     }
     if (isAdmin) {
@@ -47,6 +49,7 @@ const Navbar = () => {
         { to: '/admin/users', icon: FiUsers, label: 'Usuarios' },
         { to: '/admin/report', icon: FiDollarSign, label: 'Reportes' },
         { to: '/admin/verify', icon: FiUser, label: 'Verificar' },
+        { to: '/help', icon: FiHelpCircle, label: 'Ayuda' },
       ];
     }
     return [];
@@ -137,15 +140,12 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* Mobile Menu - Slide from right con Cerrar Sesión debajo de los links */}
+      {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
-          {/* Overlay oscuro */}
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)} />
           
-          {/* Panel del menú */}
           <div className="fixed top-0 right-0 w-4/5 max-w-sm h-full bg-white shadow-2xl animate-slide-in-right flex flex-col">
-            {/* Header del menú móvil */}
             <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-[#FF6B35]/5 to-[#4361EE]/5">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FF6B35] to-[#4361EE] flex items-center justify-center overflow-hidden shadow-md">
@@ -170,7 +170,6 @@ const Navbar = () => {
               </div>
             </div>
             
-            {/* Links del menú */}
             <div className="py-2">
               {links.map((link) => (
                 <button
@@ -188,7 +187,6 @@ const Navbar = () => {
               ))}
             </div>
             
-            {/* Botón de Cerrar Sesión - JUSTO DEBAJO DE LOS LINKS, ANTES DEL FINAL */}
             <div className="p-4 border-t border-gray-100 mt-2">
               <button
                 onClick={handleLogout}

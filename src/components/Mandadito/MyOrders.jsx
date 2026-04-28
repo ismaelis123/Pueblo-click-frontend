@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiCheck, FiClock, FiPackage, FiPhone, FiUser, FiTruck, FiMessageSquare, FiMapPin } from 'react-icons/fi';
+import { FiCheck, FiClock, FiPackage, FiPhone, FiUser, FiTruck, FiMessageSquare, FiMapPin, FiFilter } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { formatDate, getStatusText, getStatusColor, formatCurrency } from '../../utils/formatters';
@@ -11,15 +11,18 @@ const MyOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deliveringId, setDeliveringId] = useState(null);
+  const [hideCompleted, setHideCompleted] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [hideCompleted]);
 
   const fetchOrders = async () => {
+    setLoading(true);
     try {
-      const response = await api.get('/mandadito/orders');
+      const params = hideCompleted ? '?hideCompleted=true' : '';
+      const response = await api.get(`/mandadito/orders${params}`);
       setOrders(response.data);
     } catch (error) {
       toast.error('Error al cargar órdenes');
@@ -53,35 +56,79 @@ const MyOrders = () => {
     navigate(`/mandadito/share-location/${orderId}`);
   };
 
+  // Contar órdenes por estado
+  const activeOrders = orders.filter(o => o.status !== 'completed');
+  const completedOrders = orders.filter(o => o.status === 'completed');
+
   if (loading) return <LoadingSpinner />;
 
   return (
     <Background>
       <div className="max-w-4xl mx-auto py-8 px-4 pb-24 md:pb-8">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Mis Órdenes Asignadas</h1>
-          <p className="text-sm text-gray-500 mt-1">Gestiona los mandados que has aceptado</p>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Mis Órdenes Asignadas</h1>
+            <p className="text-sm text-gray-500 mt-1">Gestiona los mandados que has aceptado</p>
+          </div>
+          <button
+            onClick={() => setHideCompleted(!hideCompleted)}
+            className={`px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
+              hideCompleted 
+                ? 'bg-[#FF6B35] text-white shadow-sm' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <FiFilter className="text-sm" />
+            {hideCompleted ? 'Solo activas' : 'Todas'}
+          </button>
         </div>
+
+        {/* Contadores */}
+        {!hideCompleted && orders.length > 0 && (
+          <div className="flex gap-4 mb-4 text-sm">
+            <div className="bg-green-50 text-green-700 px-3 py-1 rounded-full">
+              ✅ {completedOrders.length} completadas
+            </div>
+            <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full">
+              📦 {activeOrders.length} activas
+            </div>
+          </div>
+        )}
         
         {orders.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <FiPackage className="text-3xl text-gray-400" />
             </div>
-            <p className="text-gray-500">Aún no tienes órdenes asignadas</p>
-            <p className="text-sm text-gray-400 mt-1">Revisa las órdenes pendientes y acepta alguna</p>
-            <a
-              href="/mandadito/pending"
-              className="inline-block bg-[#E63946] text-white px-6 py-3 rounded-xl mt-6 hover:bg-[#c92a2a] transition-colors"
-            >
-              Ver órdenes pendientes
-            </a>
+            <p className="text-gray-500">
+              {hideCompleted ? 'No tienes órdenes activas' : 'Aún no tienes órdenes asignadas'}
+            </p>
+            <p className="text-sm text-gray-400 mt-1">
+              {hideCompleted ? 'Todas tus órdenes han sido completadas' : 'Revisa las órdenes pendientes y acepta alguna'}
+            </p>
+            {hideCompleted ? (
+              <button
+                onClick={() => setHideCompleted(false)}
+                className="text-[#FF6B35] underline mt-4"
+              >
+                Ver todas las órdenes
+              </button>
+            ) : (
+              <a
+                href="/mandadito/pending"
+                className="inline-block bg-[#E63946] text-white px-6 py-3 rounded-xl mt-6 hover:bg-[#c92a2a] transition-colors"
+              >
+                Ver órdenes pendientes
+              </a>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
             {orders.map((order) => (
-              <div key={order._id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+              <div key={order._id} className={`bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 ${
+                order.status === 'completed' ? 'opacity-75' : ''
+              }`}>
                 {/* Header con cliente */}
                 <div className={`px-5 py-3 flex justify-between items-center border-b ${
                   order.status === 'completed' ? 'bg-green-50 border-green-100' :
@@ -150,7 +197,7 @@ const MyOrders = () => {
                         <FiMessageSquare className="text-sm" /> Chat
                       </button>
                       
-                      {/* Botón Compartir Ubicación - cuando la orden está aceptada */}
+                      {/* Botón Compartir Ubicación */}
                       {order.status === 'accepted' && (
                         <button
                           onClick={() => handleShareLocation(order._id)}

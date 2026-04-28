@@ -28,17 +28,51 @@ const ShareLocation = () => {
   const [mapReady, setMapReady] = useState(false);
   const [routeInfo, setRouteInfo] = useState(null);
   const [mapError, setMapError] = useState(null);
+  const [currentDestination, setCurrentDestination] = useState('pickup'); // 'pickup' o 'delivery'
   
   const mapRef = useRef(null);
   const mapContainerRef = useRef(null);
   const markersRef = useRef({});
   const directionsRendererRef = useRef(null);
 
+  // Función para calcular distancia entre dos puntos
+  const calculateDistance = (lat1, lng1, lat2, lng2) => {
+    if (!lat1 || !lng1 || !lat2 || !lng2) return 999;
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  // Verificar si llegó al punto de recogida (menos de 50 metros)
+  const checkArrivalAtPickup = (currentPos, pickupPos) => {
+    if (!currentPos || !pickupPos) return false;
+    const distance = calculateDistance(
+      currentPos.lat, currentPos.lng,
+      pickupPos.lat, pickupPos.lng
+    );
+    return distance < 0.05;
+  };
+
+  // Verificar si llegó al punto de entrega (menos de 50 metros)
+  const checkArrivalAtDelivery = (currentPos, deliveryPos) => {
+    if (!currentPos || !deliveryPos) return false;
+    const distance = calculateDistance(
+      currentPos.lat, currentPos.lng,
+      deliveryPos.lat, deliveryPos.lng
+    );
+    return distance < 0.05;
+  };
+
   // Esperar Google Maps
   useEffect(() => {
     const checkGoogleMaps = () => {
       if (window.google && window.google.maps) {
-        console.log('✅ Google Maps disponible');
         setMapReady(true);
         return true;
       }
@@ -47,11 +81,7 @@ const ShareLocation = () => {
     
     if (checkGoogleMaps()) return;
     
-    const handleMapsLoaded = () => {
-      console.log('✅ Google Maps cargado por evento');
-      setMapReady(true);
-    };
-    
+    const handleMapsLoaded = () => setMapReady(true);
     window.addEventListener('google-maps-loaded', handleMapsLoaded);
     const interval = setInterval(checkGoogleMaps, 300);
     
@@ -76,12 +106,35 @@ const ShareLocation = () => {
     }
   }, [order, mapReady]);
 
-  // Actualizar ubicación en el mapa
+  // Actualizar ubicación y verificar destino
   useEffect(() => {
     if (mapRef.current && location && order) {
+      const currentPos = { lat: location.lat, lng: location.lng };
+      
+      // Verificar si llegó al punto de recogida
+      if (currentDestination === 'pickup' && order.pickupLocation?.lat) {
+        const pickupPos = { lat: order.pickupLocation.lat, lng: order.pickupLocation.lng };
+        const arrived = checkArrivalAtPickup(currentPos, pickupPos);
+        
+        if (arrived) {
+          setCurrentDestination('delivery');
+          toast.success('✅ Llegaste al punto de recogida. Ahora dirigite al punto de entrega.');
+        }
+      }
+      
+      // Verificar si llegó al punto de entrega
+      if (currentDestination === 'delivery' && order.deliveryLocation?.lat) {
+        const deliveryPos = { lat: order.deliveryLocation.lat, lng: order.deliveryLocation.lng };
+        const arrived = checkArrivalAtDelivery(currentPos, deliveryPos);
+        
+        if (arrived && order.status === 'accepted') {
+          toast.success('📍 Llegaste al punto de entrega. ¡Marcá el pedido como entregado!');
+        }
+      }
+      
       updateMapWithLocation();
     }
-  }, [location, order]);
+  }, [location, order, currentDestination]);
 
   // Enviar ubicación periódicamente
   useEffect(() => {
@@ -110,7 +163,6 @@ const ShareLocation = () => {
     
     sendLocation();
     const interval = setInterval(sendLocation, 8000);
-    
     return () => clearInterval(interval);
   }, [location, sharing, orderId, socket, isConnected]);
 
@@ -119,6 +171,13 @@ const ShareLocation = () => {
       const response = await api.get(`/mandadito/orders/${orderId}`);
       setOrder(response.data);
       setSharing(response.data.mandadito?.isSharingLocation || false);
+      
+      // Determinar destino inicial basado en el estado
+      if (response.data.status === 'accepted' && !response.data.mandaditoDeliveredAt) {
+        setCurrentDestination('pickup');
+      } else if (response.data.mandaditoDeliveredAt) {
+        setCurrentDestination('delivery');
+      }
     } catch (error) {
       console.error('Error fetching order:', error);
       toast.error('Error al cargar la orden');
@@ -131,12 +190,10 @@ const ShareLocation = () => {
       return;
     }
 
-    console.log('🗺️ Inicializando mapa para mandadito...');
-
     try {
       const defaultCenter = { lat: 12.106, lng: -85.364 };
-      
       let initialCenter = defaultCenter;
+      
       if (location?.lat) {
         initialCenter = { lat: location.lat, lng: location.lng };
       } else if (order?.pickupLocation?.lat) {
@@ -164,9 +221,8 @@ const ShareLocation = () => {
 
       addAllMarkers();
       setMapError(null);
-      console.log('✅ Mapa del mandadito inicializado');
     } catch (error) {
-      console.error('❌ Error inicializando mapa:', error);
+      console.error('Error inicializando mapa:', error);
       setMapError('Error al cargar el mapa');
     }
   };
@@ -175,7 +231,6 @@ const ShareLocation = () => {
     if (!mapRef.current || !order) return;
 
     const bounds = new window.google.maps.LatLngBounds();
-    
     Object.values(markersRef.current).forEach(marker => marker?.setMap(null));
     markersRef.current = {};
 
@@ -190,6 +245,7 @@ const ShareLocation = () => {
           url: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
           scaledSize: new window.google.maps.Size(45, 45),
         },
+        label: { text: '📦', color: 'white', fontSize: '14px' },
         animation: window.google.maps.Animation.DROP,
       });
       bounds.extend(pickupPos);
@@ -206,6 +262,7 @@ const ShareLocation = () => {
           url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
           scaledSize: new window.google.maps.Size(45, 45),
         },
+        label: { text: '🏠', color: 'white', fontSize: '14px' },
         animation: window.google.maps.Animation.DROP,
       });
       bounds.extend(deliveryPos);
@@ -225,13 +282,16 @@ const ShareLocation = () => {
       });
       bounds.extend(currentPos);
       
-      // Calcular ruta hacia recogida o entrega
-      const destination = order.status === 'accepted' && !order.mandaditoDeliveredAt 
-        ? order.pickupLocation 
-        : order.deliveryLocation;
-        
-      if (destination?.lat) {
-        calculateRoute(currentPos, { lat: destination.lat, lng: destination.lng });
+      // Calcular ruta según destino actual
+      let destination;
+      if (currentDestination === 'pickup' && order.pickupLocation?.lat) {
+        destination = { lat: order.pickupLocation.lat, lng: order.pickupLocation.lng };
+      } else if (order.deliveryLocation?.lat) {
+        destination = { lat: order.deliveryLocation.lat, lng: order.deliveryLocation.lng };
+      }
+      
+      if (destination) {
+        calculateRoute(currentPos, destination);
       }
     }
 
@@ -241,7 +301,7 @@ const ShareLocation = () => {
   };
 
   const updateMapWithLocation = () => {
-    if (!mapRef.current || !location) return;
+    if (!mapRef.current || !location || !order) return;
 
     const currentPos = { lat: location.lat, lng: location.lng };
 
@@ -259,13 +319,16 @@ const ShareLocation = () => {
       });
     }
 
-    // Actualizar ruta
-    const destination = order?.status === 'accepted' && !order?.mandaditoDeliveredAt 
-      ? order?.pickupLocation 
-      : order?.deliveryLocation;
-      
-    if (destination?.lat) {
-      calculateRoute(currentPos, { lat: destination.lat, lng: destination.lng });
+    // Determinar destino según currentDestination
+    let destination;
+    if (currentDestination === 'pickup' && order.pickupLocation?.lat) {
+      destination = { lat: order.pickupLocation.lat, lng: order.pickupLocation.lng };
+    } else if (order.deliveryLocation?.lat) {
+      destination = { lat: order.deliveryLocation.lat, lng: order.deliveryLocation.lng };
+    }
+    
+    if (destination) {
+      calculateRoute(currentPos, destination);
     }
   };
 
@@ -286,6 +349,8 @@ const ShareLocation = () => {
               duration: route.legs[0].duration.text,
             });
           }
+        } else {
+          console.log('No se pudo calcular la ruta:', status);
         }
       }
     );
@@ -293,11 +358,8 @@ const ShareLocation = () => {
 
   const toggleSharing = async () => {
     if (permission !== 'granted') {
-      const granted = await requestPermission();
-      if (!granted) {
-        toast.error('Necesitas activar la ubicación para compartir');
-        return;
-      }
+      await requestPermission();
+      return;
     }
     
     setSending(true);
@@ -313,13 +375,16 @@ const ShareLocation = () => {
   };
 
   const openInGoogleMaps = () => {
-    if (!order) return;
+    if (!order || !location) return;
     
-    const destination = order.status === 'accepted' && !order.mandaditoDeliveredAt 
-      ? order.pickupLocation 
-      : order.deliveryLocation;
+    let destination;
+    if (currentDestination === 'pickup') {
+      destination = order.pickupLocation;
+    } else {
+      destination = order.deliveryLocation;
+    }
     
-    if (location?.lat && destination?.lat) {
+    if (destination?.lat) {
       window.open(`https://www.google.com/maps/dir/?api=1&origin=${location.lat},${location.lng}&destination=${destination.lat},${destination.lng}&travelmode=driving`, '_blank');
     }
   };
@@ -331,6 +396,17 @@ const ShareLocation = () => {
     }
   };
 
+  const handleSwitchDestination = () => {
+    if (currentDestination === 'pickup') {
+      setCurrentDestination('delivery');
+      toast.success('Cambiaste a ruta hacia la entrega');
+    } else {
+      setCurrentDestination('pickup');
+      toast.success('Cambiaste a ruta hacia la recogida');
+    }
+    updateMapWithLocation();
+  };
+
   return (
     <Background>
       <div className="max-w-md mx-auto py-4 px-4 min-h-screen flex flex-col">
@@ -339,6 +415,18 @@ const ShareLocation = () => {
             <FiArrowLeft className="text-xl" />
           </button>
           <h1 className="text-xl font-bold text-gray-800">Compartir Ubicación</h1>
+        </div>
+
+        {/* Indicador de destino actual */}
+        <div className={`rounded-xl p-3 mb-4 text-center ${
+          currentDestination === 'pickup' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+        }`}>
+          <p className="text-sm font-semibold">
+            {currentDestination === 'pickup' ? '📦 Dirigiéndote al punto de RECOGIDA' : '🏠 Dirigiéndote al punto de ENTREGA'}
+          </p>
+          <button onClick={handleSwitchDestination} className="text-xs mt-1 underline">
+            Cambiar a {currentDestination === 'pickup' ? 'entrega' : 'recogida'}
+          </button>
         </div>
 
         {/* Mapa */}
@@ -374,30 +462,17 @@ const ShareLocation = () => {
                 <p className="font-semibold text-[#FF6B35]">{routeInfo.distance}</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-gray-500">Tiempo estimado</p>
+                <p className="text-xs text-gray-500">Tiempo</p>
                 <p className="font-semibold text-[#FF6B35]">{routeInfo.duration}</p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Panel de ubicación */}
+        {/* Ubicación */}
         <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
           <h3 className="font-semibold text-gray-800 mb-2">📍 Tu ubicación</h3>
-          
-          {permission === 'denied' ? (
-            <div className="text-center py-2">
-              <FiAlertCircle className="text-3xl text-red-400 mx-auto mb-2" />
-              <p className="text-red-500 text-sm">Permiso denegado</p>
-              <button onClick={requestPermission} className="mt-2 text-[#FF6B35] underline text-sm">
-                Solicitar permiso
-              </button>
-            </div>
-          ) : locationLoading ? (
-            <div className="flex items-center justify-center gap-2 py-2">
-              <FiLoader className="animate-spin" /> Obteniendo ubicación...
-            </div>
-          ) : location ? (
+          {location ? (
             <div>
               <p className="text-xs text-gray-500 font-mono">
                 Lat: {location.lat.toFixed(6)}<br />
@@ -410,7 +485,7 @@ const ShareLocation = () => {
               )}
             </div>
           ) : (
-            <p className="text-gray-500 text-sm text-center py-2">Esperando ubicación...</p>
+            <p className="text-gray-500 text-sm">Esperando ubicación...</p>
           )}
         </div>
 

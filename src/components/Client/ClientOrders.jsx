@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiPackage, FiCheck, FiStar, FiClock, FiPhone, FiUser, FiMessageSquare, FiMapPin } from 'react-icons/fi';
+import { FiPackage, FiCheck, FiStar, FiClock, FiPhone, FiUser, FiMessageSquare, FiMapPin, FiZap, FiFilter } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { formatDate, getStatusText, getStatusColor, formatCurrency } from '../../utils/formatters';
@@ -11,15 +11,18 @@ const ClientOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [confirmingId, setConfirmingId] = useState(null);
+  const [hideCompleted, setHideCompleted] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [hideCompleted]);
 
   const fetchOrders = async () => {
+    setLoading(true);
     try {
-      const response = await api.get('/client/orders');
+      const params = hideCompleted ? '?hideCompleted=true' : '';
+      const response = await api.get(`/client/orders${params}`);
       setOrders(response.data);
     } catch (error) {
       toast.error('Error al cargar las órdenes');
@@ -57,6 +60,26 @@ const ClientOrders = () => {
     navigate('/client/rate', { state: { orderId, mandaditoName } });
   };
 
+  const getDistanceText = (distance) => {
+    if (!distance) return '';
+    if (distance <= 2) return 'Cerca';
+    if (distance <= 5) return 'Moderado';
+    if (distance <= 8) return 'Largo';
+    return 'Muy largo';
+  };
+
+  const getDistanceColor = (distance) => {
+    if (!distance) return 'text-gray-400';
+    if (distance <= 2) return 'text-green-600';
+    if (distance <= 5) return 'text-blue-600';
+    if (distance <= 8) return 'text-orange-600';
+    return 'text-red-600';
+  };
+
+  // Contar órdenes por estado
+  const activeOrders = orders.filter(o => o.status !== 'completed');
+  const completedOrders = orders.filter(o => o.status === 'completed');
+
   if (loading) return <LoadingSpinner />;
 
   return (
@@ -68,32 +91,73 @@ const ClientOrders = () => {
             <h1 className="text-2xl font-bold text-gray-800">Mis Órdenes</h1>
             <p className="text-sm text-gray-500 mt-1">Sigue el estado de tus mandados</p>
           </div>
-          <button
-            onClick={() => navigate('/client/create-order')}
-            className="bg-[#E63946] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#c92a2a] transition-colors shadow-sm flex items-center gap-2"
-          >
-            <FiPackage className="text-base" /> Nuevo Mandado
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Botón de filtro */}
+            <button
+              onClick={() => setHideCompleted(!hideCompleted)}
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
+                hideCompleted 
+                  ? 'bg-[#FF6B35] text-white shadow-sm' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <FiFilter className="text-sm" />
+              {hideCompleted ? 'Solo activas' : 'Todas'}
+            </button>
+            <button
+              onClick={() => navigate('/client/create-order')}
+              className="bg-[#E63946] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#c92a2a] transition-colors shadow-sm flex items-center gap-2"
+            >
+              <FiPackage className="text-base" /> Nuevo Mandado
+            </button>
+          </div>
         </div>
+
+        {/* Contadores */}
+        {!hideCompleted && orders.length > 0 && (
+          <div className="flex gap-4 mb-4 text-sm">
+            <div className="bg-green-50 text-green-700 px-3 py-1 rounded-full">
+              ✅ {completedOrders.length} completadas
+            </div>
+            <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full">
+              📦 {activeOrders.length} activas
+            </div>
+          </div>
+        )}
         
         {orders.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <FiPackage className="text-3xl text-gray-400" />
             </div>
-            <p className="text-gray-500">No tienes órdenes aún</p>
-            <p className="text-sm text-gray-400 mt-1">Crea tu primer mandado y encuentra un mandadito disponible</p>
-            <button
-              onClick={() => navigate('/client/create-order')}
-              className="bg-[#E63946] text-white px-6 py-3 rounded-xl mt-6 hover:bg-[#c92a2a] transition-colors"
-            >
-              + Crear mi primer mandado
-            </button>
+            <p className="text-gray-500">
+              {hideCompleted ? 'No tienes órdenes activas' : 'No tienes órdenes aún'}
+            </p>
+            <p className="text-sm text-gray-400 mt-1">
+              {hideCompleted ? 'Todas tus órdenes han sido completadas' : 'Crea tu primer mandado y encuentra un mandadito disponible'}
+            </p>
+            {hideCompleted ? (
+              <button
+                onClick={() => setHideCompleted(false)}
+                className="text-[#FF6B35] underline mt-4"
+              >
+                Ver todas las órdenes
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate('/client/create-order')}
+                className="bg-[#E63946] text-white px-6 py-3 rounded-xl mt-6 hover:bg-[#c92a2a] transition-colors"
+              >
+                + Crear mi primer mandado
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
             {orders.map((order) => (
-              <div key={order._id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+              <div key={order._id} className={`bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 ${
+                order.status === 'completed' ? 'opacity-75' : ''
+              }`}>
                 {/* Header con estado y datos del mandadito */}
                 <div className={`px-5 py-3 flex justify-between items-center border-b ${
                   order.status === 'completed' ? 'bg-green-50 border-green-100' :
@@ -149,12 +213,27 @@ const ClientOrders = () => {
                   
                   <div className="flex justify-between items-center pt-3 border-t border-gray-100">
                     <div>
-                      <span className="font-bold text-[#E63946] text-lg">{formatCurrency(order.amount)}</span>
-                      <p className="text-xs text-gray-400">Costo del mandado</p>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-[#E63946] text-lg">
+                          {formatCurrency(order.amount || 0)}
+                        </span>
+                        {order.isUrgent && (
+                          <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <FiZap className="text-xs" /> Urgente
+                          </span>
+                        )}
+                      </div>
+                      {order.distance && (
+                        <p className={`text-xs ${getDistanceColor(order.distance)}`}>
+                          📏 {order.distance.toFixed(1)} km • {getDistanceText(order.distance)}
+                        </p>
+                      )}
+                      {!order.distance && !order.isUrgent && (
+                        <p className="text-xs text-gray-400">Costo del mandado</p>
+                      )}
                     </div>
                     
                     <div className="flex gap-2 flex-wrap justify-end">
-                      {/* Botón de Chat - visible cuando hay mandadito asignado */}
                       {order.mandadito && order.status !== 'pending' && (
                         <button
                           onClick={() => handleOpenChat(order._id)}
@@ -164,7 +243,6 @@ const ClientOrders = () => {
                         </button>
                       )}
                       
-                      {/* Botón de Seguir - cuando el mandadito está en camino */}
                       {(order.status === 'accepted' || order.status === 'delivered') && (
                         <button
                           onClick={() => handleTrackOrder(order._id)}
@@ -174,7 +252,6 @@ const ClientOrders = () => {
                         </button>
                       )}
                       
-                      {/* Botón Confirmar Recepción */}
                       {order.status === 'delivered' && (
                         <button
                           onClick={() => handleConfirmReceived(order._id)}
@@ -190,7 +267,6 @@ const ClientOrders = () => {
                         </button>
                       )}
                       
-                      {/* Botón Calificar */}
                       {order.status === 'completed' && (
                         <button
                           onClick={() => handleRateOrder(order._id, order.mandadito?.name)}
@@ -200,7 +276,6 @@ const ClientOrders = () => {
                         </button>
                       )}
                       
-                      {/* Estado de proceso */}
                       {(order.status === 'pending' || order.status === 'pending_confirmation') && (
                         <div className="flex items-center gap-1 text-gray-400 text-sm bg-gray-50 px-3 py-2 rounded-xl">
                           <FiClock className="text-sm" /> En proceso
